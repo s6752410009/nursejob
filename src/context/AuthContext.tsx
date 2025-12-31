@@ -1,0 +1,298 @@
+// ============================================
+// AUTH CONTEXT - Production Ready
+// ============================================
+
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { 
+  loginUser, 
+  registerUser, 
+  logoutUser, 
+  subscribeToAuthChanges,
+  getUserProfile,
+  updateUserProfile as updateProfile,
+  resetPassword,
+  UserProfile,
+} from '../services/authService';
+import { getErrorMessage } from '../utils/helpers';
+
+// ============================================
+// Types
+// ============================================
+interface AuthState {
+  user: UserProfile | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  isInitialized: boolean;
+}
+
+interface AuthContextType extends AuthState {
+  // Actions
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, displayName: string, role?: 'nurse' | 'hospital') => Promise<void>;
+  logout: () => Promise<void>;
+  updateUser: (updates: Partial<UserProfile>) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  refreshUser: () => Promise<void>;
+  
+  // Guest mode
+  showLoginModal: boolean;
+  setShowLoginModal: (show: boolean) => void;
+  pendingAction: (() => void) | null;
+  requireAuth: (action: () => void) => void;
+  executePendingAction: () => void;
+  
+  // Error handling
+  error: string | null;
+  clearError: () => void;
+}
+
+// ============================================
+// Context
+// ============================================
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// ============================================
+// Provider
+// ============================================
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
+  // State
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Listen for auth state changes
+  useEffect(() => {
+    const unsubscribe = subscribeToAuthChanges(async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const profile = await getUserProfile(firebaseUser.uid);
+          setUser(profile);
+          // Cache user data
+          if (profile) {
+            await AsyncStorage.setItem('user', JSON.stringify(profile));
+          }
+        } catch (err) {
+          console.error('Error fetching user profile:', err);
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+        await AsyncStorage.removeItem('user');
+      }
+      setIsInitialized(true);
+    });
+
+    // Try to restore cached user on app start
+    loadCachedUser();
+
+    return () => unsubscribe();
+  }, []);
+
+  // Load cached user for faster startup
+  const loadCachedUser = async () => {
+    try {
+      const cached = await AsyncStorage.getItem('user');
+      if (cached) {
+        const cachedUser = JSON.parse(cached);
+        // Only use cache if still loading
+        if (!isInitialized) {
+          setUser(cachedUser);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading cached user:', err);
+    }
+  };
+
+  // Login
+  const login = async (email: string, password: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const profile = await loginUser(email, password);
+      setUser(profile);
+      setShowLoginModal(false);
+      // Execute pending action after login
+      if (pendingAction) {
+        setTimeout(() => {
+          pendingAction();
+          setPendingAction(null);
+        }, 100);
+      }
+    } catch (err: any) {
+      const errorMessage = getErrorMessage(err);
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Register
+  const register = async (
+    email: string, 
+    password: string, 
+    displayName: string,
+    role: 'nurse' | 'hospital' = 'nurse'
+  ) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const profile = await registerUser(email, password, displayName, role);
+      setUser(profile);
+      setShowLoginModal(false);
+      if (pendingAction) {
+        setTimeout(() => {
+          pendingAction();
+          setPendingAction(null);
+        }, 100);
+      }
+    } catch (err: any) {
+      const errorMessage = getErrorMessage(err);
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Logout
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await logoutUser();
+      setUser(null);
+      await AsyncStorage.removeItem('user');
+    } catch (err: any) {
+      console.error('Logout error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Update user profile
+  const updateUser = async (updates: Partial<UserProfile>) => {
+    if (!user?.uid) throw new Error('ไม่ได้เข้าสู่ระบบ');
+    
+    setIsLoading(true);
+    try {
+      // Filter out undefined values and prepare for Firestore
+      const cleanUpdates: Record<string, any> = {};
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value !== undefined) {
+          cleanUpdates[key] = value;
+        }
+      });
+      
+      await updateProfile(user.uid, cleanUpdates as Partial<UserProfile>);
+      const updatedProfile = { ...user, ...updates };
+      setUser(updatedProfile);
+      await AsyncStorage.setItem('user', JSON.stringify(updatedProfile));
+    } catch (err: any) {
+      const errorMessage = getErrorMessage(err);
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Forgot password
+  const forgotPassword = async (email: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await resetPassword(email);
+    } catch (err: any) {
+      const errorMessage = getErrorMessage(err);
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Refresh user data
+  const refreshUser = async () => {
+    if (!user?.uid) return;
+    
+    try {
+      const profile = await getUserProfile(user.uid);
+      if (profile) {
+        setUser(profile);
+        await AsyncStorage.setItem('user', JSON.stringify(profile));
+      }
+    } catch (err) {
+      console.error('Error refreshing user:', err);
+    }
+  };
+
+  // Require authentication (for guest mode)
+  const requireAuth = (action: () => void) => {
+    if (user) {
+      action();
+    } else {
+      setPendingAction(() => action);
+      setShowLoginModal(true);
+    }
+  };
+
+  // Execute pending action
+  const executePendingAction = () => {
+    if (pendingAction && user) {
+      pendingAction();
+      setPendingAction(null);
+    }
+  };
+
+  // Clear error
+  const clearError = () => setError(null);
+
+  // Context value
+  const value: AuthContextType = {
+    user,
+    isAuthenticated: !!user,
+    isLoading,
+    isInitialized,
+    login,
+    register,
+    logout,
+    updateUser,
+    forgotPassword,
+    refreshUser,
+    showLoginModal,
+    setShowLoginModal,
+    pendingAction,
+    requireAuth,
+    executePendingAction,
+    error,
+    clearError,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+// ============================================
+// Hook
+// ============================================
+export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+
+export default AuthContext;

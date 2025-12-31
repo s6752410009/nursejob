@@ -1,0 +1,788 @@
+// ============================================
+// COMMON COMPONENTS - Production Ready
+// ============================================
+
+import React, { useState, ReactNode } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Modal,
+  Image,
+  ViewStyle,
+  TextStyle,
+  TextInputProps,
+  Pressable,
+  ImageStyle,
+} from 'react-native';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
+
+// ============================================
+// BUTTON
+// ============================================
+interface ButtonProps {
+  title: string;
+  onPress: () => void;
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  size?: 'small' | 'medium' | 'large';
+  loading?: boolean;
+  disabled?: boolean;
+  icon?: ReactNode;
+  iconPosition?: 'left' | 'right';
+  fullWidth?: boolean;
+  style?: ViewStyle;
+  textStyle?: TextStyle;
+}
+
+export function Button({
+  title,
+  onPress,
+  variant = 'primary',
+  size = 'medium',
+  loading = false,
+  disabled = false,
+  icon,
+  iconPosition = 'left',
+  fullWidth = false,
+  style,
+  textStyle,
+}: ButtonProps) {
+  const isDisabled = disabled || loading;
+
+  const buttonStyles = [
+    styles.button,
+    styles[`button_${variant}`],
+    styles[`button_${size}`],
+    fullWidth && styles.buttonFullWidth,
+    isDisabled && styles.buttonDisabled,
+    style,
+  ];
+
+  const textStyles = [
+    styles.buttonText,
+    styles[`buttonText_${variant}`],
+    styles[`buttonText_${size}`],
+    isDisabled && styles.buttonTextDisabled,
+    textStyle,
+  ];
+
+  return (
+    <TouchableOpacity
+      style={buttonStyles}
+      onPress={onPress}
+      disabled={isDisabled}
+      activeOpacity={0.7}
+    >
+      {loading ? (
+        <ActivityIndicator 
+          color={variant === 'outline' || variant === 'ghost' ? COLORS.primary : COLORS.white} 
+          size="small" 
+        />
+      ) : (
+        <View style={styles.buttonContent}>
+          {icon && iconPosition === 'left' && <View style={styles.iconLeft}>{icon}</View>}
+          <Text style={textStyles}>{title}</Text>
+          {icon && iconPosition === 'right' && <View style={styles.iconRight}>{icon}</View>}
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+// ============================================
+// INPUT
+// ============================================
+interface InputProps extends TextInputProps {
+  label?: string;
+  error?: string;
+  icon?: ReactNode;
+  iconPosition?: 'left' | 'right';
+  containerStyle?: ViewStyle;
+  required?: boolean;
+}
+
+export function Input({
+  label,
+  error,
+  icon,
+  iconPosition = 'left',
+  containerStyle,
+  required,
+  style,
+  ...props
+}: InputProps) {
+  const [isFocused, setIsFocused] = useState(false);
+
+  return (
+    <View style={[styles.inputContainer, containerStyle]}>
+      {label && (
+        <Text style={styles.inputLabel}>
+          {label}
+          {required && <Text style={styles.required}> *</Text>}
+        </Text>
+      )}
+      <View style={[
+        styles.inputWrapper,
+        isFocused && styles.inputWrapperFocused,
+        error && styles.inputWrapperError,
+      ]}>
+        {icon && iconPosition === 'left' && <View style={styles.inputIcon}>{icon}</View>}
+        <TextInput
+          style={[
+            styles.input,
+            icon && iconPosition === 'left' ? styles.inputWithIconLeft : undefined,
+            icon && iconPosition === 'right' ? styles.inputWithIconRight : undefined,
+            style,
+          ]}
+          placeholderTextColor={COLORS.textMuted}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          {...props}
+        />
+        {icon && iconPosition === 'right' && <View style={styles.inputIcon}>{icon}</View>}
+      </View>
+      {error && <Text style={styles.inputError}>{error}</Text>}
+    </View>
+  );
+}
+
+// ============================================
+// CARD
+// ============================================
+interface CardProps {
+  children: ReactNode;
+  onPress?: () => void;
+  style?: ViewStyle;
+  padding?: number;
+  shadow?: boolean;
+}
+
+export function Card({ children, onPress, style, padding = SPACING.md, shadow = true }: CardProps) {
+  const cardContent = (
+    <View style={[
+      styles.card,
+      shadow && SHADOWS.medium,
+      { padding },
+      style,
+    ]}>
+      {children}
+    </View>
+  );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+        {cardContent}
+      </TouchableOpacity>
+    );
+  }
+
+  return cardContent;
+}
+
+// ============================================
+// AVATAR
+// ============================================
+interface AvatarProps {
+  uri?: string | null;
+  name?: string;
+  size?: number;
+  style?: ImageStyle;
+}
+
+export function Avatar({ uri, name, size = 50, style }: AvatarProps) {
+  const initials = name
+    ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : '?';
+
+  if (uri) {
+    return (
+      <Image
+        source={{ uri }}
+        style={[
+          styles.avatar,
+          { width: size, height: size, borderRadius: size / 2 },
+          style,
+        ] as ImageStyle[]}
+      />
+    );
+  }
+
+  return (
+    <View style={[
+      styles.avatarPlaceholder,
+      { width: size, height: size, borderRadius: size / 2 },
+    ]}>
+      <Text style={[styles.avatarText, { fontSize: size * 0.4 }]}>{initials}</Text>
+    </View>
+  );
+}
+
+// ============================================
+// BADGE
+// ============================================
+interface BadgeProps {
+  text: string;
+  variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'info';
+  size?: 'small' | 'medium';
+  style?: ViewStyle;
+}
+
+export function Badge({ text, variant = 'primary', size = 'medium', style }: BadgeProps) {
+  return (
+    <View style={[
+      styles.badge,
+      styles[`badge_${variant}`],
+      styles[`badge_${size}`],
+      style,
+    ]}>
+      <Text style={[styles.badgeText, styles[`badgeText_${size}`]]}>{text}</Text>
+    </View>
+  );
+}
+
+// ============================================
+// LOADING
+// ============================================
+interface LoadingProps {
+  size?: 'small' | 'large';
+  color?: string;
+  text?: string;
+  message?: string; // Alias for text
+  fullScreen?: boolean;
+}
+
+export function Loading({ size = 'large', color = COLORS.primary, text, message, fullScreen = false }: LoadingProps) {
+  const displayText = text || message;
+  if (fullScreen) {
+    return (
+      <View style={styles.loadingFullScreen}>
+        <ActivityIndicator size={size} color={color} />
+        {displayText && <Text style={styles.loadingText}>{displayText}</Text>}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size={size} color={color} />
+      {displayText && <Text style={styles.loadingText}>{displayText}</Text>}
+    </View>
+  );
+}
+
+// ============================================
+// MODAL
+// ============================================
+interface ModalContainerProps {
+  visible: boolean;
+  onClose: () => void;
+  title?: string;
+  children: ReactNode;
+  showCloseButton?: boolean;
+  fullScreen?: boolean;
+}
+
+export function ModalContainer({
+  visible,
+  onClose,
+  title,
+  children,
+  showCloseButton = true,
+  fullScreen = false,
+}: ModalContainerProps) {
+  return (
+    <Modal
+      visible={visible}
+      transparent={!fullScreen}
+      animationType={fullScreen ? 'slide' : 'fade'}
+      onRequestClose={onClose}
+    >
+      {fullScreen ? (
+        <View style={styles.modalFullScreen}>
+          {title && (
+            <View style={styles.modalFullScreenHeader}>
+              {showCloseButton && (
+                <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+                  <Text style={styles.modalCloseText}>✕</Text>
+                </TouchableOpacity>
+              )}
+              <Text style={styles.modalFullScreenTitle}>{title}</Text>
+              <View style={{ width: 44 }} />
+            </View>
+          )}
+          <View style={styles.modalFullScreenContent}>{children}</View>
+        </View>
+      ) : (
+        <Pressable style={styles.modalOverlay} onPress={onClose}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            {title && (
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{title}</Text>
+                {showCloseButton && (
+                  <TouchableOpacity onPress={onClose}>
+                    <Text style={styles.modalClose}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+            {children}
+          </Pressable>
+        </Pressable>
+      )}
+    </Modal>
+  );
+}
+
+// ============================================
+// EMPTY STATE
+// ============================================
+interface EmptyStateProps {
+  icon?: string;
+  title: string;
+  description?: string;
+  subtitle?: string; // Alias for description
+  actionText?: string;
+  actionLabel?: string; // Alias for actionText
+  onAction?: () => void;
+}
+
+export function EmptyState({ icon = '📭', title, description, subtitle, actionText, actionLabel, onAction }: EmptyStateProps) {
+  const displayDescription = description || subtitle;
+  const displayActionText = actionText || actionLabel;
+  return (
+    <View style={styles.emptyState}>
+      <Text style={styles.emptyStateIcon}>{icon}</Text>
+      <Text style={styles.emptyStateTitle}>{title}</Text>
+      {displayDescription && <Text style={styles.emptyStateDescription}>{displayDescription}</Text>}
+      {displayActionText && onAction && (
+        <Button title={displayActionText} onPress={onAction} variant="outline" size="small" />
+      )}
+    </View>
+  );
+}
+
+// ============================================
+// DIVIDER
+// ============================================
+interface DividerProps {
+  text?: string;
+  style?: ViewStyle;
+}
+
+export function Divider({ text, style }: DividerProps) {
+  if (text) {
+    return (
+      <View style={[styles.dividerContainer, style]}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>{text}</Text>
+        <View style={styles.dividerLine} />
+      </View>
+    );
+  }
+
+  return <View style={[styles.divider, style]} />;
+}
+
+// ============================================
+// CHIP / TAG
+// ============================================
+interface ChipProps {
+  label: string;
+  selected?: boolean;
+  onPress?: () => void;
+  icon?: ReactNode;
+  style?: ViewStyle;
+}
+
+export function Chip({ label, selected, onPress, icon, style }: ChipProps) {
+  return (
+    <TouchableOpacity
+      style={[
+        styles.chip,
+        selected && styles.chipSelected,
+        style,
+      ]}
+      onPress={onPress}
+      activeOpacity={0.7}
+      disabled={!onPress}
+    >
+      {icon && <View style={styles.chipIcon}>{icon}</View>}
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// ============================================
+// STYLES
+// ============================================
+const styles = StyleSheet.create({
+  // Button styles
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: BORDER_RADIUS.md,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonFullWidth: {
+    width: '100%',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+
+  // Button variants
+  button_primary: {
+    backgroundColor: COLORS.primary,
+  },
+  button_secondary: {
+    backgroundColor: COLORS.secondary,
+  },
+  button_outline: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  button_ghost: {
+    backgroundColor: 'transparent',
+  },
+  button_danger: {
+    backgroundColor: COLORS.danger,
+  },
+
+  // Button sizes
+  button_small: {
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+    minHeight: 36,
+  },
+  button_medium: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    minHeight: 44,
+  },
+  button_large: {
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xl,
+    minHeight: 52,
+  },
+
+  // Button text
+  buttonText: {
+    fontWeight: '600',
+  },
+  buttonTextDisabled: {
+    opacity: 0.5,
+  },
+  buttonText_primary: {
+    color: COLORS.white,
+  },
+  buttonText_secondary: {
+    color: COLORS.white,
+  },
+  buttonText_outline: {
+    color: COLORS.primary,
+  },
+  buttonText_ghost: {
+    color: COLORS.primary,
+  },
+  buttonText_danger: {
+    color: COLORS.white,
+  },
+  buttonText_small: {
+    fontSize: FONT_SIZES.sm,
+  },
+  buttonText_medium: {
+    fontSize: FONT_SIZES.md,
+  },
+  buttonText_large: {
+    fontSize: FONT_SIZES.lg,
+  },
+
+  iconLeft: {
+    marginRight: SPACING.xs,
+  },
+  iconRight: {
+    marginLeft: SPACING.xs,
+  },
+
+  // Input styles
+  inputContainer: {
+    marginBottom: SPACING.md,
+  },
+  inputLabel: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '500',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  required: {
+    color: COLORS.danger,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.md,
+    overflow: 'hidden',
+  },
+  inputWrapperFocused: {
+    borderColor: COLORS.primary,
+    borderWidth: 2,
+  },
+  inputWrapperError: {
+    borderColor: COLORS.danger,
+  },
+  input: {
+    flex: 1,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text,
+    minHeight: 48,
+  },
+  inputWithIconLeft: {
+    paddingLeft: 0,
+  },
+  inputWithIconRight: {
+    paddingRight: 0,
+  },
+  inputIcon: {
+    paddingHorizontal: SPACING.sm,
+  },
+  inputError: {
+    color: COLORS.danger,
+    fontSize: FONT_SIZES.sm,
+    marginTop: SPACING.xs,
+  },
+
+  // Card styles
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+
+  // Avatar styles
+  avatar: {
+    backgroundColor: COLORS.backgroundSecondary,
+  },
+  avatarPlaceholder: {
+    backgroundColor: COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+
+  // Badge styles
+  badge: {
+    paddingHorizontal: SPACING.sm,
+    borderRadius: BORDER_RADIUS.full,
+    alignSelf: 'flex-start',
+  },
+  badge_primary: {
+    backgroundColor: COLORS.primaryLight,
+  },
+  badge_secondary: {
+    backgroundColor: COLORS.secondaryLight,
+  },
+  badge_success: {
+    backgroundColor: '#dcfce7',
+  },
+  badge_warning: {
+    backgroundColor: '#fef3c7',
+  },
+  badge_danger: {
+    backgroundColor: '#fee2e2',
+  },
+  badge_info: {
+    backgroundColor: '#dbeafe',
+  },
+  badge_small: {
+    paddingVertical: 2,
+    paddingHorizontal: SPACING.xs,
+  },
+  badge_medium: {
+    paddingVertical: 4,
+    paddingHorizontal: SPACING.sm,
+  },
+  badgeText: {
+    fontWeight: '500',
+  },
+  badgeText_small: {
+    fontSize: FONT_SIZES.xs,
+  },
+  badgeText_medium: {
+    fontSize: FONT_SIZES.sm,
+  },
+
+  // Loading styles
+  loadingContainer: {
+    padding: SPACING.xl,
+    alignItems: 'center',
+  },
+  loadingFullScreen: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    marginTop: SPACING.sm,
+    color: COLORS.textSecondary,
+    fontSize: FONT_SIZES.sm,
+  },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.lg,
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.xl,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '80%',
+    padding: SPACING.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  modalTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  modalClose: {
+    fontSize: 20,
+    color: COLORS.textSecondary,
+  },
+  modalFullScreen: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  modalFullScreenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  modalFullScreenTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  modalCloseButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCloseText: {
+    fontSize: 20,
+    color: COLORS.text,
+  },
+  modalFullScreenContent: {
+    flex: 1,
+  },
+
+  // Empty state styles
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SPACING.xl,
+  },
+  emptyStateIcon: {
+    fontSize: 64,
+    marginBottom: SPACING.md,
+  },
+  emptyStateTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: SPACING.xs,
+  },
+  emptyStateDescription: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SPACING.md,
+  },
+
+  // Divider styles
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: SPACING.md,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: SPACING.md,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  dividerText: {
+    paddingHorizontal: SPACING.md,
+    color: COLORS.textSecondary,
+    fontSize: FONT_SIZES.sm,
+  },
+
+  // Chip styles
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.full,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginRight: SPACING.xs,
+    marginBottom: SPACING.xs,
+  },
+  chipSelected: {
+    backgroundColor: COLORS.primaryLight,
+    borderColor: COLORS.primary,
+  },
+  chipIcon: {
+    marginRight: SPACING.xs,
+  },
+  chipText: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+  },
+  chipTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '500',
+  },
+});

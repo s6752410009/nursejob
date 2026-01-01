@@ -39,9 +39,46 @@ const ADMIN_EMAILS = [
   // 'your-email@gmail.com',
 ];
 
+// ==========================================
+// Admin Credentials (Username/Password)
+// ==========================================
+// สำหรับเข้าสู่ระบบ Admin โดยตรง (ไม่ต้องสมัครสมาชิก)
+interface AdminCredential {
+  username: string;
+  password: string;
+  displayName: string;
+  email: string;
+}
+
+const ADMIN_CREDENTIALS: AdminCredential[] = [
+  {
+    username: 'adminmark',
+    password: 'Markms2429',
+    displayName: 'Admin Mark',
+    email: 'adminmark@nurseshift.admin',
+  },
+  // เพิ่ม admin account อื่นๆ ได้ที่นี่
+];
+
+// ตรวจสอบ admin credentials
+export function validateAdminCredentials(username: string, password: string): AdminCredential | null {
+  const admin = ADMIN_CREDENTIALS.find(
+    (a) => a.username.toLowerCase() === username.toLowerCase() && a.password === password
+  );
+  return admin || null;
+}
+
 // ตรวจสอบว่าเป็น admin หรือไม่
 export function isAdminEmail(email: string): boolean {
-  return ADMIN_EMAILS.includes(email.toLowerCase());
+  // Check email list
+  if (ADMIN_EMAILS.includes(email.toLowerCase())) {
+    return true;
+  }
+  // Check admin credentials email
+  if (ADMIN_CREDENTIALS.some(a => a.email.toLowerCase() === email.toLowerCase())) {
+    return true;
+  }
+  return false;
 }
 
 const USERS_COLLECTION = 'users';
@@ -201,6 +238,28 @@ export async function loginWithGoogle(idToken: string): Promise<UserProfile> {
     console.error('Error logging in with Google:', error);
     throw new Error('เข้าสู่ระบบด้วย Google ไม่สำเร็จ');
   }
+}
+
+// Login as Admin with username/password (ไม่ต้องผ่าน Firebase Auth)
+export async function loginAsAdmin(username: string, password: string): Promise<UserProfile> {
+  const adminCredential = validateAdminCredentials(username, password);
+  
+  if (!adminCredential) {
+    throw new Error('Username หรือ Password ไม่ถูกต้อง');
+  }
+
+  // สร้าง admin profile (ไม่บันทึกใน Firestore เพื่อความปลอดภัย)
+  const adminProfile: UserProfile = {
+    id: `admin_${adminCredential.username}`,
+    uid: `admin_${adminCredential.username}`,
+    email: adminCredential.email,
+    displayName: adminCredential.displayName,
+    role: 'admin',
+    isAdmin: true,
+    createdAt: new Date(),
+  };
+
+  return adminProfile;
 }
 
 // Logout user

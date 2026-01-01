@@ -18,6 +18,7 @@ import { RootStackParamList, AuthStackParamList, MainTabParamList } from '../typ
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import AdminLoginScreen from '../screens/auth/AdminLoginScreen';
 
 // Main Screens
 import HomeScreen from '../screens/home/HomeScreen';
@@ -64,6 +65,7 @@ function AuthNavigator() {
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Register" component={RegisterScreen} />
       <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <AuthStack.Screen name="AdminLogin" component={AdminLoginScreen} />
       <AuthStack.Screen name="Terms" component={TermsScreen} />
       <AuthStack.Screen name="Privacy" component={PrivacyScreen} />
     </AuthStack.Navigator>

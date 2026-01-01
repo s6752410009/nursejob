@@ -266,6 +266,14 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
               <Text style={styles.registerLink}>สมัครสมาชิก</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Admin Login Link */}
+          <TouchableOpacity 
+            style={styles.adminLoginLink} 
+            onPress={() => navigation.navigate('AdminLogin' as any)}
+          >
+            <Text style={styles.adminLoginText}>🛡️ เข้าสู่ระบบสำหรับ Admin</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -380,5 +388,16 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '600',
     fontSize: FONT_SIZES.md,
+  },
+  
+  // Admin Login Link
+  adminLoginLink: {
+    marginTop: SPACING.xl,
+    alignItems: 'center',
+    padding: SPACING.md,
+  },
+  adminLoginText: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZES.sm,
   },
 });

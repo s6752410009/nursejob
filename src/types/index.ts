@@ -208,6 +208,7 @@ export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
+  AdminLogin: undefined; // Admin Login Screen
   Terms: undefined;
   Privacy: undefined;
 };

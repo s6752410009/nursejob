@@ -13,6 +13,7 @@ import {
   updateUserProfile as updateProfile,
   resetPassword,
   loginWithGoogle as loginWithGoogleService,
+  loginAsAdmin as loginAsAdminService,
   isAdminEmail,
   UserProfile,
 } from '../services/authService';
@@ -32,6 +33,7 @@ interface AuthContextType extends AuthState {
   // Actions
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
+  loginAsAdmin: (username: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName: string, role?: 'nurse' | 'hospital') => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<UserProfile>) => Promise<void>;
@@ -166,6 +168,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  // Login as Admin with username/password
+  const loginAsAdmin = async (username: string, password: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const profile = await loginAsAdminService(username, password);
+      setUser(profile);
+      await AsyncStorage.setItem('user', JSON.stringify(profile));
+      await AsyncStorage.setItem('isAdminSession', 'true');
+      setShowLoginModal(false);
+      // Execute pending action after login
+      if (pendingAction) {
+        setTimeout(() => {
+          pendingAction();
+          setPendingAction(null);
+        }, 100);
+      }
+    } catch (err: any) {
+      const errorMessage = getErrorMessage(err);
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Register
   const register = async (
     email: string, 
@@ -198,9 +226,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = async () => {
     setIsLoading(true);
     try {
-      await logoutUser();
+      // Check if admin session (admin login doesn't use Firebase Auth)
+      const isAdminSession = await AsyncStorage.getItem('isAdminSession');
+      if (!isAdminSession) {
+        await logoutUser();
+      }
       setUser(null);
       await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('isAdminSession');
     } catch (err: any) {
       console.error('Logout error:', err);
     } finally {
@@ -297,6 +330,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isInitialized,
     login,
     loginWithGoogle,
+    loginAsAdmin,
     register,
     logout,
     updateUser,

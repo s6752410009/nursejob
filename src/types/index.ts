@@ -201,6 +201,7 @@ export type RootStackParamList = {
   Help: undefined;
   Terms: undefined;
   Privacy: undefined;
+  AdminDashboard: undefined; // Admin Dashboard Screen
 };
 
 export type AuthStackParamList = {

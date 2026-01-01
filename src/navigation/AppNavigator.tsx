@@ -37,6 +37,9 @@ import HelpScreen from '../screens/help/HelpScreen';
 import TermsScreen from '../screens/legal/TermsScreen';
 import PrivacyScreen from '../screens/legal/PrivacyScreen';
 
+// Admin Screens
+import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+
 // Theme
 import { COLORS, SPACING, FONT_SIZES } from '../theme';
 
@@ -147,7 +150,7 @@ function MainTabNavigator() {
 // ROOT NAVIGATOR
 // ============================================
 function RootNavigator() {
-  const { isAuthenticated, showLoginModal, setShowLoginModal } = useAuth();
+  const { isAuthenticated, showLoginModal, setShowLoginModal, isAdmin } = useAuth();
 
   return (
     <RootStack.Navigator
@@ -253,6 +256,15 @@ function RootNavigator() {
       <RootStack.Screen 
         name="Privacy" 
         component={PrivacyScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+
+      {/* Admin Dashboard (Admin only) */}
+      <RootStack.Screen 
+        name="AdminDashboard" 
+        component={AdminDashboardScreen}
         options={{
           animation: 'slide_from_right',
         }}

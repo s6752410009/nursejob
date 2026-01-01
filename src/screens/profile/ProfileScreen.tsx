@@ -40,7 +40,7 @@ interface Props {
 // ============================================
 export default function ProfileScreen({ navigation }: Props) {
   // Auth context
-  const { user, isAuthenticated, logout, updateUser, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, logout, updateUser, isLoading: isAuthLoading, isAdmin } = useAuth();
   const nav = useNavigation<any>();
 
   // State
@@ -427,6 +427,21 @@ export default function ProfileScreen({ navigation }: Props) {
             <Text style={styles.linkText}>ช่วยเหลือ</Text>
             <Text style={styles.linkArrow}>→</Text>
           </TouchableOpacity>
+
+          {/* Admin Dashboard Link - Only for admins */}
+          {isAdmin && (
+            <>
+              <Divider />
+              <TouchableOpacity 
+                style={[styles.linkItem, styles.adminLink]} 
+                onPress={() => nav.navigate('AdminDashboard')}
+              >
+                <Text style={styles.linkIcon}>🛡️</Text>
+                <Text style={[styles.linkText, styles.adminLinkText]}>แผงควบคุม Admin</Text>
+                <Text style={styles.linkArrow}>→</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </Card>
 
         <View style={{ height: SPACING.xl * 2 }} />
@@ -437,7 +452,7 @@ export default function ProfileScreen({ navigation }: Props) {
         visible={showEditModal}
         onClose={() => setShowEditModal(false)}
         title="แก้ไขโปรไฟล์"
-        fullScreen
+        fullScreen={true}
       >
         <ScrollView style={styles.editModalContent}>
           <Input
@@ -482,7 +497,7 @@ export default function ProfileScreen({ navigation }: Props) {
               onChangeText={(text) => setEditForm({ ...editForm, bio: text })}
               placeholder="บอกเล่าเกี่ยวกับตัวคุณ ความเชี่ยวชาญ และสิ่งที่คุณมองหา..."
               placeholderTextColor={COLORS.textMuted}
-              multiline
+              multiline={true}
               numberOfLines={4}
               textAlignVertical="top"
             />
@@ -701,6 +716,13 @@ const styles = StyleSheet.create({
   linkArrow: {
     fontSize: 16,
     color: COLORS.textMuted,
+  },
+  adminLink: {
+    backgroundColor: '#FEF3C7', // Light amber background
+  },
+  adminLinkText: {
+    color: '#B45309', // Amber color for admin text
+    fontWeight: '600',
   },
   countBadge: {
     backgroundColor: COLORS.primary,

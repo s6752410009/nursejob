@@ -4,6 +4,8 @@ import {
   signOut,
   onAuthStateChanged,
   updateProfile,
+  signInWithCredential,
+  GoogleAuthProvider,
   User as FirebaseUser
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -17,12 +19,29 @@ export interface UserProfile {
   photoURL?: string | null;
   phone?: string;
   role: 'nurse' | 'hospital' | 'admin';
+  isAdmin: boolean; // Admin flag
   licenseNumber?: string; // เลขใบประกอบวิชาชีพ
   experience?: number;
   bio?: string;
   skills?: string[];
   createdAt: Date;
   updatedAt?: Date;
+}
+
+// ==========================================
+// Admin Configuration
+// ==========================================
+// รายชื่อ email ที่เป็น admin (คุณสามารถเพิ่มได้)
+const ADMIN_EMAILS = [
+  'admin@nurseshift.com',
+  'admin@nursejob.com',
+  // เพิ่ม email ของคุณที่นี่:
+  // 'your-email@gmail.com',
+];
+
+// ตรวจสอบว่าเป็น admin หรือไม่
+export function isAdminEmail(email: string): boolean {
+  return ADMIN_EMAILS.includes(email.toLowerCase());
 }
 
 const USERS_COLLECTION = 'users';
@@ -46,12 +65,17 @@ export async function registerUser(
     // Update display name
     await updateProfile(user, { displayName });
 
+    // Check if admin
+    const isAdmin = isAdminEmail(email);
+    const finalRole = isAdmin ? 'admin' : role;
+
     // Create user profile in Firestore
     const userProfile: Omit<UserProfile, 'id'> = {
       uid: user.uid,
       email,
       displayName,
-      role,
+      role: finalRole,
+      isAdmin,
       createdAt: new Date(),
     };
 
@@ -86,9 +110,35 @@ export async function loginUser(email: string, password: string): Promise<UserPr
     const user = userCredential.user;
 
     // Get user profile from Firestore
-    const userProfile = await getUserProfile(user.uid);
+    let userProfile = await getUserProfile(user.uid);
+    
+    // If profile doesn't exist, create one (for existing Firebase Auth users)
     if (!userProfile) {
-      throw new Error('ไม่พบข้อมูลผู้ใช้');
+      const isAdmin = isAdminEmail(email);
+      userProfile = {
+        id: user.uid,
+        uid: user.uid,
+        email: user.email || email,
+        displayName: user.displayName || email.split('@')[0],
+        role: isAdmin ? 'admin' : 'nurse',
+        isAdmin,
+        createdAt: new Date(),
+      };
+      
+      await setDoc(doc(db, USERS_COLLECTION, user.uid), {
+        ...userProfile,
+        createdAt: serverTimestamp(),
+      });
+    }
+
+    // Update isAdmin flag if needed
+    if (isAdminEmail(email) && !userProfile.isAdmin) {
+      await updateDoc(doc(db, USERS_COLLECTION, user.uid), {
+        isAdmin: true,
+        role: 'admin',
+      });
+      userProfile.isAdmin = true;
+      userProfile.role = 'admin';
     }
 
     return userProfile;
@@ -102,8 +152,54 @@ export async function loginUser(email: string, password: string): Promise<UserPr
       throw new Error('รูปแบบอีเมลไม่ถูกต้อง');
     } else if (error.code === 'auth/too-many-requests') {
       throw new Error('มีการพยายามเข้าสู่ระบบมากเกินไป กรุณารอสักครู่');
+    } else if (error.code === 'auth/invalid-credential') {
+      throw new Error('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
     }
     throw error;
+  }
+}
+
+// Login with Google ID Token
+export async function loginWithGoogle(idToken: string): Promise<UserProfile> {
+  try {
+    const credential = GoogleAuthProvider.credential(idToken);
+    const userCredential = await signInWithCredential(auth, credential);
+    const user = userCredential.user;
+
+    // Get or create user profile
+    let userProfile = await getUserProfile(user.uid);
+    
+    if (!userProfile) {
+      const isAdmin = isAdminEmail(user.email || '');
+      userProfile = {
+        id: user.uid,
+        uid: user.uid,
+        email: user.email || '',
+        displayName: user.displayName || 'ผู้ใช้',
+        photoURL: user.photoURL,
+        role: isAdmin ? 'admin' : 'nurse',
+        isAdmin,
+        createdAt: new Date(),
+      };
+      
+      await setDoc(doc(db, USERS_COLLECTION, user.uid), {
+        ...userProfile,
+        createdAt: serverTimestamp(),
+      });
+    } else {
+      // Update photo URL from Google if changed
+      if (user.photoURL && user.photoURL !== userProfile.photoURL) {
+        await updateDoc(doc(db, USERS_COLLECTION, user.uid), {
+          photoURL: user.photoURL,
+        });
+        userProfile.photoURL = user.photoURL;
+      }
+    }
+
+    return userProfile;
+  } catch (error: any) {
+    console.error('Error logging in with Google:', error);
+    throw new Error('เข้าสู่ระบบด้วย Google ไม่สำเร็จ');
   }
 }
 
@@ -129,6 +225,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
         id: docSnap.id,
         uid: docSnap.id,
         ...data,
+        isAdmin: data.isAdmin || isAdminEmail(data.email || ''),
         createdAt: data.createdAt?.toDate() || new Date(),
         updatedAt: data.updatedAt?.toDate(),
       } as UserProfile;

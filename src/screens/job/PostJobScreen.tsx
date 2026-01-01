@@ -223,7 +223,7 @@ export default function PostJobScreen({ navigation }: Props) {
             placeholder="รายละเอียดงาน, เงื่อนไข, หมายเหตุ..."
             value={form.description}
             onChangeText={(text) => setForm({ ...form, description: text })}
-            multiline
+            multiline={true}
             numberOfLines={3}
           />
         </Card>

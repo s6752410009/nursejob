@@ -158,7 +158,7 @@ export default function HomeScreen({ navigation }: Props) {
     <View style={styles.listHeader}>
       {/* Quick Filters */}
       <ScrollView 
-        horizontal 
+        horizontal={true}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.quickFilters}
       >
@@ -316,7 +316,7 @@ function FilterModal({ visible, onClose, filters, setFilters, onApply, onClear }
       visible={visible}
       onClose={onClose}
       title="ตัวกรองการค้นหา"
-      fullScreen
+      fullScreen={true}
     >
       <ScrollView style={styles.filterContent} showsVerticalScrollIndicator={false}>
         {/* Province */}
@@ -343,7 +343,7 @@ function FilterModal({ visible, onClose, filters, setFilters, onApply, onClear }
         {filters.province === 'กรุงเทพมหานคร' && (
           <View style={styles.filterSection}>
             <Text style={styles.filterLabel}>เขต</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
               <View style={styles.filterOptions}>
                 <Chip
                   label="ทุกเขต"

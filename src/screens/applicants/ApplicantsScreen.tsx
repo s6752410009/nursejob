@@ -366,7 +366,7 @@ ${contact.message ? `\n💬 ข้อความ:\n${contact.message}` : ''}`,
       {/* Status Modal */}
       <Modal
         visible={showStatusModal}
-        transparent
+        transparent={true}
         animationType="fade"
         onRequestClose={() => setShowStatusModal(false)}
       >

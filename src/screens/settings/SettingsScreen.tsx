@@ -168,7 +168,7 @@ export default function SettingsScreen() {
     <TouchableOpacity
       style={styles.row}
       onPress={onPress}
-      disabled={!onPress && !onValueChange}
+      disabled={Boolean(!onPress && !onValueChange)}
       activeOpacity={onPress ? 0.7 : 1}
     >
       <View style={[styles.rowIcon, destructive && styles.rowIconDestructive]}>
@@ -186,7 +186,7 @@ export default function SettingsScreen() {
       </View>
       {onValueChange !== undefined && value !== undefined && (
         <Switch
-          value={value}
+          value={Boolean(value)}
           onValueChange={onValueChange}
           trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
           thumbColor={value ? COLORS.primary : COLORS.white}

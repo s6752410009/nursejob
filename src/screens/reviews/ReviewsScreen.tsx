@@ -56,7 +56,7 @@ const StarRating = ({
       <TouchableOpacity
         key={star}
         onPress={() => editable && onRate?.(star)}
-        disabled={!editable}
+        disabled={Boolean(!editable)}
       >
         <Ionicons
           name={star <= rating ? 'star' : 'star-outline'}
@@ -390,7 +390,7 @@ export default function ReviewsScreen() {
               {/* Rating */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>ให้คะแนน</Text>
-                <StarRating rating={newRating} size={32} onRate={setNewRating} editable />
+                <StarRating rating={newRating} size={32} onRate={setNewRating} editable={true} />
               </View>
 
               {/* Title */}
@@ -413,7 +413,7 @@ export default function ReviewsScreen() {
                   placeholder="บอกเล่าประสบการณ์ของคุณ..."
                   value={newContent}
                   onChangeText={setNewContent}
-                  multiline
+                  multiline={true}
                   numberOfLines={4}
                   textAlignVertical="top"
                   maxLength={1000}

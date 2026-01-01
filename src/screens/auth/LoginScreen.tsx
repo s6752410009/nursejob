@@ -1,8 +1,8 @@
 // ============================================
-// LOGIN SCREEN - Production Ready
+// LOGIN SCREEN - Production Ready with Google Sign-In
 // ============================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,13 +12,32 @@ import {
   Platform,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import { Button, Input, Divider } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { AuthStackParamList } from '../../types';
+
+// Complete auth session for proper redirect handling
+WebBrowser.maybeCompleteAuthSession();
+
+// ============================================
+// Google OAuth Config
+// ============================================
+// สำหรับ production คุณต้องสร้าง OAuth credentials ที่ Google Cloud Console
+// https://console.cloud.google.com/apis/credentials
+const GOOGLE_CLIENT_ID = {
+  // เปลี่ยนเป็น client ID ของคุณ
+  expoClientId: 'YOUR_EXPO_CLIENT_ID.apps.googleusercontent.com',
+  androidClientId: 'YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com',
+  iosClientId: 'YOUR_IOS_CLIENT_ID.apps.googleusercontent.com',
+  webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+};
 
 // ============================================
 // Types
@@ -39,9 +58,51 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   // Auth context
-  const { login, isLoading, error, clearError } = useAuth();
+  const { login, loginWithGoogle, isLoading, error, clearError } = useAuth();
+
+  // Google Auth Request
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    ...GOOGLE_CLIENT_ID,
+  });
+
+  // Handle Google Sign-In response
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      handleGoogleLogin(id_token);
+    } else if (response?.type === 'error') {
+      Alert.alert('เข้าสู่ระบบไม่สำเร็จ', 'ไม่สามารถเข้าสู่ระบบด้วย Google ได้');
+      setGoogleLoading(false);
+    }
+  }, [response]);
+
+  // Handle Google Login
+  const handleGoogleLogin = async (idToken: string) => {
+    setGoogleLoading(true);
+    try {
+      await loginWithGoogle(idToken);
+      // Navigation will be handled by the auth state change
+    } catch (err: any) {
+      Alert.alert('เข้าสู่ระบบไม่สำเร็จ', err.message || 'กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  // Trigger Google Sign-In
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    clearError();
+    try {
+      await promptAsync();
+    } catch (err: any) {
+      Alert.alert('เข้าสู่ระบบไม่สำเร็จ', 'ไม่สามารถเปิดหน้า Google ได้');
+      setGoogleLoading(false);
+    }
+  };
 
   // Validate form
   const validateForm = (): boolean => {
@@ -166,6 +227,27 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
 
             <Divider text="หรือ" />
 
+            {/* Google Sign-In Button */}
+            <TouchableOpacity
+              style={[
+                styles.googleButton,
+                (googleLoading || !request) && styles.googleButtonDisabled,
+              ]}
+              onPress={handleGoogleSignIn}
+              disabled={googleLoading || !request}
+            >
+              {googleLoading ? (
+                <ActivityIndicator color={COLORS.text} />
+              ) : (
+                <>
+                  <Text style={styles.googleIcon}>G</Text>
+                  <Text style={styles.googleButtonText}>
+                    เข้าสู่ระบบด้วย Google
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
             {/* Guest Mode */}
             {onGuestLogin && (
               <Button
@@ -249,6 +331,39 @@ const styles = StyleSheet.create({
     color: COLORS.danger,
     fontSize: FONT_SIZES.sm,
     textAlign: 'center',
+  },
+
+  // Google Button
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    marginBottom: SPACING.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  googleButtonDisabled: {
+    opacity: 0.6,
+  },
+  googleIcon: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#4285F4',
+    marginRight: SPACING.sm,
+  },
+  googleButtonText: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    color: COLORS.text,
   },
 
   // Footer

@@ -250,7 +250,7 @@ export default function DocumentsScreen() {
         <TouchableOpacity
           style={styles.addButton}
           onPress={() => setShowTypeModal(true)}
-          disabled={isUploading}
+          disabled={Boolean(isUploading)}
         >
           {isUploading ? (
             <Text style={styles.addButtonText}>กำลังอัพโหลด...</Text>
@@ -289,7 +289,7 @@ export default function DocumentsScreen() {
       {/* Document Type Selection Modal */}
       <Modal
         visible={showTypeModal}
-        transparent
+        transparent={true}
         animationType="slide"
         onRequestClose={() => setShowTypeModal(false)}
       >

@@ -286,7 +286,7 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
             data={messages}
             renderItem={renderMessage}
             keyExtractor={(item) => item.id}
-            inverted
+            inverted={true}
             contentContainerStyle={styles.messagesList}
             ListEmptyComponent={
               <View style={styles.emptyChat}>
@@ -304,13 +304,13 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
             onChangeText={setInputText}
             placeholder="พิมพ์ข้อความ..."
             placeholderTextColor={COLORS.textMuted}
-            multiline
+            multiline={true}
             maxLength={500}
           />
           <TouchableOpacity
             style={[styles.sendButton, (!inputText.trim() || isSending) && styles.sendButtonDisabled]}
             onPress={handleSend}
-            disabled={!inputText.trim() || isSending}
+            disabled={Boolean(!inputText.trim() || isSending)}
           >
             {isSending ? (
               <ActivityIndicator size="small" color={COLORS.white} />

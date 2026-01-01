@@ -254,7 +254,7 @@ export default function HelpScreen() {
 
         {/* Categories */}
         <ScrollView
-          horizontal
+          horizontal={true}
           showsHorizontalScrollIndicator={false}
           style={styles.categoriesContainer}
           contentContainerStyle={styles.categoriesContent}

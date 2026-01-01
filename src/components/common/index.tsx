@@ -112,6 +112,8 @@ export function Input({
   containerStyle,
   required,
   style,
+  multiline,
+  editable,
   ...props
 }: InputProps) {
   const [isFocused, setIsFocused] = useState(false);
@@ -140,6 +142,8 @@ export function Input({
           placeholderTextColor={COLORS.textMuted}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
+          multiline={multiline === true ? true : undefined}
+          editable={editable === false ? false : undefined}
           {...props}
         />
         {icon && iconPosition === 'right' && <View style={styles.inputIcon}>{icon}</View>}
@@ -297,7 +301,7 @@ export function ModalContainer({
   return (
     <Modal
       visible={visible}
-      transparent={!fullScreen}
+      transparent={fullScreen ? false : true}
       animationType={fullScreen ? 'slide' : 'fade'}
       onRequestClose={onClose}
     >
@@ -408,7 +412,7 @@ export function Chip({ label, selected, onPress, icon, style }: ChipProps) {
       ]}
       onPress={onPress}
       activeOpacity={0.7}
-      disabled={!onPress}
+      disabled={Boolean(!onPress)}
     >
       {icon && <View style={styles.chipIcon}>{icon}</View>}
       <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>

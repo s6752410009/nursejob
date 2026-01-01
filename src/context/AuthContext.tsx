@@ -12,6 +12,8 @@ import {
   getUserProfile,
   updateUserProfile as updateProfile,
   resetPassword,
+  loginWithGoogle as loginWithGoogleService,
+  isAdminEmail,
   UserProfile,
 } from '../services/authService';
 import { getErrorMessage } from '../utils/helpers';
@@ -29,11 +31,15 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   // Actions
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   register: (email: string, password: string, displayName: string, role?: 'nurse' | 'hospital') => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<UserProfile>) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   refreshUser: () => Promise<void>;
+  
+  // Admin
+  isAdmin: boolean;
   
   // Guest mode
   showLoginModal: boolean;
@@ -118,6 +124,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setError(null);
     try {
       const profile = await loginUser(email, password);
+      setUser(profile);
+      setShowLoginModal(false);
+      // Execute pending action after login
+      if (pendingAction) {
+        setTimeout(() => {
+          pendingAction();
+          setPendingAction(null);
+        }, 100);
+      }
+    } catch (err: any) {
+      const errorMessage = getErrorMessage(err);
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Login with Google
+  const loginWithGoogle = async (idToken: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const profile = await loginWithGoogleService(idToken);
       setUser(profile);
       setShowLoginModal(false);
       // Execute pending action after login
@@ -256,6 +286,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Clear error
   const clearError = () => setError(null);
 
+  // Check if user is admin
+  const isAdmin = user?.isAdmin || isAdminEmail(user?.email || '');
+
   // Context value
   const value: AuthContextType = {
     user,
@@ -263,11 +296,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isLoading,
     isInitialized,
     login,
+    loginWithGoogle,
     register,
     logout,
     updateUser,
     forgotPassword,
     refreshUser,
+    isAdmin,
     showLoginModal,
     setShowLoginModal,
     pendingAction,

@@ -22,6 +22,7 @@ import { Button, Input, Divider } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { AuthStackParamList } from '../../types';
+import { validateAdminCredentials } from '../../services/authService';
 
 // Complete auth session for proper redirect handling
 WebBrowser.maybeCompleteAuthSession();
@@ -61,7 +62,7 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   // Auth context
-  const { login, loginWithGoogle, isLoading, error, clearError } = useAuth();
+  const { login, loginWithGoogle, loginAsAdmin, isLoading, error, clearError } = useAuth();
 
   // Google Auth Request
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
@@ -109,19 +110,21 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
     const newErrors: { email?: string; password?: string } = {};
 
     if (!email.trim()) {
-      newErrors.email = 'กรุณากรอกอีเมล';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'รูปแบบอีเมลไม่ถูกต้อง';
+      newErrors.email = 'กรุณากรอกอีเมลหรือ Username';
     }
+    // ไม่ต้องเช็ค email format เพราะอาจเป็น admin username
 
     if (!password) {
       newErrors.password = 'กรุณากรอกรหัสผ่าน';
-    } else if (password.length < 6) {
-      newErrors.password = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Check if input is admin username
+  const isAdminUsername = (input: string): boolean => {
+    return validateAdminCredentials(input, password) !== null;
   };
 
   // Handle login
@@ -130,8 +133,19 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
     
     if (!validateForm()) return;
 
+    const trimmedEmail = email.trim();
+
     try {
-      await login(email.trim(), password);
+      // ตรวจสอบว่าเป็น admin username หรือไม่
+      const adminCredential = validateAdminCredentials(trimmedEmail, password);
+      
+      if (adminCredential) {
+        // Login เป็น Admin
+        await loginAsAdmin(trimmedEmail, password);
+      } else {
+        // Login ปกติด้วย Firebase Auth
+        await login(trimmedEmail, password);
+      }
       // Navigation will be handled by the auth state change
     } catch (err: any) {
       Alert.alert('เข้าสู่ระบบไม่สำเร็จ', err.message || 'กรุณาลองใหม่อีกครั้ง');
@@ -169,13 +183,13 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
           {/* Login Form */}
           <View style={styles.form}>
             <Input
-              label="อีเมล"
+              label="อีเมล / Username (Admin)"
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
                 if (errors.email) setErrors({ ...errors, email: undefined });
               }}
-              placeholder="example@email.com"
+              placeholder="อีเมล หรือ Username สำหรับ Admin"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}

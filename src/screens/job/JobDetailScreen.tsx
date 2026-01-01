@@ -71,12 +71,15 @@ const getShiftTimeLabel = (time: string): string => {
 // ============================================
 export default function JobDetailScreen({ navigation, route }: Props) {
   const { job } = route.params;
-  const { user, requireAuth } = useAuth();
+  const { user, requireAuth, isAuthenticated } = useAuth();
 
   const [isContacting, setIsContacting] = useState(false);
   const [hasContacted, setHasContacted] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+
+  // Check if user is logged in
+  const isLoggedIn = isAuthenticated && user;
 
   // Handle contact poster
   const handleContact = () => {
@@ -294,34 +297,51 @@ export default function JobDetailScreen({ navigation, route }: Props) {
           )}
         </Card>
 
-        {/* Description */}
-        {job.description && (
+        {/* Description - Only show for logged in users */}
+        {job.description && isLoggedIn && (
           <Card style={styles.section}>
             <Text style={styles.sectionTitle}>📝 รายละเอียดเพิ่มเติม</Text>
             <Text style={styles.description}>{job.description}</Text>
           </Card>
         )}
 
-        {/* Contact */}
-        <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>📞 ช่องทางติดต่อ</Text>
-          
-          <View style={styles.contactButtons}>
-            {job.contactPhone && (
-              <TouchableOpacity style={styles.contactButton} onPress={handleCall}>
-                <Text style={styles.contactIcon}>📱</Text>
-                <Text style={styles.contactText}>โทร {job.contactPhone}</Text>
-              </TouchableOpacity>
-            )}
+        {/* Contact - Only show for logged in users */}
+        {isLoggedIn ? (
+          <Card style={styles.section}>
+            <Text style={styles.sectionTitle}>📞 ช่องทางติดต่อ</Text>
             
-            {job.contactLine && (
-              <TouchableOpacity style={styles.contactButton} onPress={handleLine}>
-                <Text style={styles.contactIcon}>💬</Text>
-                <Text style={styles.contactText}>LINE: {job.contactLine}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </Card>
+            <View style={styles.contactButtons}>
+              {job.contactPhone && (
+                <TouchableOpacity style={styles.contactButton} onPress={handleCall}>
+                  <Text style={styles.contactIcon}>📱</Text>
+                  <Text style={styles.contactText}>โทร {job.contactPhone}</Text>
+                </TouchableOpacity>
+              )}
+              
+              {job.contactLine && (
+                <TouchableOpacity style={styles.contactButton} onPress={handleLine}>
+                  <Text style={styles.contactIcon}>💬</Text>
+                  <Text style={styles.contactText}>LINE: {job.contactLine}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </Card>
+        ) : (
+          <Card style={styles.lockedSection}>
+            <View style={styles.lockedContent}>
+              <Text style={styles.lockedIcon}>🔒</Text>
+              <Text style={styles.lockedTitle}>เข้าสู่ระบบเพื่อดูข้อมูลติดต่อ</Text>
+              <Text style={styles.lockedDescription}>
+                สมัครสมาชิกฟรี เพื่อดูรายละเอียดงานและติดต่อผู้โพสต์
+              </Text>
+              <Button
+                title="เข้าสู่ระบบ / สมัครสมาชิก"
+                onPress={() => (navigation as any).navigate('Auth')}
+                style={{ marginTop: SPACING.md }}
+              />
+            </View>
+          </Card>
+        )}
 
         {/* Views */}
         {job.viewsCount !== undefined && (
@@ -649,5 +669,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
     marginTop: SPACING.lg,
+  },
+
+  // Locked Section
+  lockedSection: {
+    marginHorizontal: SPACING.sm,
+    marginTop: SPACING.sm,
+    backgroundColor: '#f8fafc',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+  },
+  lockedContent: {
+    alignItems: 'center',
+    paddingVertical: SPACING.lg,
+  },
+  lockedIcon: {
+    fontSize: 48,
+    marginBottom: SPACING.sm,
+  },
+  lockedTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  lockedDescription: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: SPACING.xs,
+    lineHeight: 20,
   },
 });

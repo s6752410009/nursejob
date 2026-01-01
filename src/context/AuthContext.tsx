@@ -15,6 +15,8 @@ import {
   loginWithGoogle as loginWithGoogleService,
   loginAsAdmin as loginAsAdminService,
   isAdminEmail,
+  findEmailByUsername,
+  validateAdminCredentials,
   UserProfile,
 } from '../services/authService';
 import { getErrorMessage } from '../utils/helpers';
@@ -31,10 +33,10 @@ interface AuthState {
 
 interface AuthContextType extends AuthState {
   // Actions
-  login: (email: string, password: string) => Promise<void>;
+  login: (emailOrUsername: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   loginAsAdmin: (username: string, password: string) => Promise<void>;
-  register: (email: string, password: string, displayName: string, role?: 'nurse' | 'hospital') => Promise<void>;
+  register: (email: string, password: string, displayName: string, role?: 'nurse' | 'hospital', username?: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<UserProfile>) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -129,11 +131,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  // Login
-  const login = async (email: string, password: string) => {
+  // Login (supports both email and username)
+  const login = async (emailOrUsername: string, password: string) => {
     setIsLoading(true);
     setError(null);
     try {
+      let email = emailOrUsername;
+      
+      // Check if it's admin credentials first
+      const adminCredential = validateAdminCredentials(emailOrUsername, password);
+      if (adminCredential) {
+        // Login as admin
+        const profile = await loginAsAdminService(emailOrUsername, password);
+        await AsyncStorage.setItem('user', JSON.stringify(profile));
+        await AsyncStorage.setItem('isAdminSession', 'true');
+        setUser(profile);
+        setIsInitialized(true);
+        setShowLoginModal(false);
+        if (pendingAction) {
+          setTimeout(() => {
+            pendingAction();
+            setPendingAction(null);
+          }, 100);
+        }
+        return;
+      }
+      
+      // Check if it's a username (doesn't contain @)
+      if (!emailOrUsername.includes('@')) {
+        const foundEmail = await findEmailByUsername(emailOrUsername);
+        if (foundEmail) {
+          email = foundEmail;
+        } else {
+          throw new Error('ไม่พบ Username นี้ในระบบ');
+        }
+      }
+      
       const profile = await loginUser(email, password);
       setUser(profile);
       setShowLoginModal(false);
@@ -211,12 +244,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     email: string, 
     password: string, 
     displayName: string,
-    role: 'nurse' | 'hospital' = 'nurse'
+    role: 'nurse' | 'hospital' = 'nurse',
+    username?: string,
+    phone?: string
   ) => {
     setIsLoading(true);
     setError(null);
     try {
-      const profile = await registerUser(email, password, displayName, role);
+      const profile = await registerUser(email, password, displayName, role, username, phone);
       setUser(profile);
       setShowLoginModal(false);
       if (pendingAction) {

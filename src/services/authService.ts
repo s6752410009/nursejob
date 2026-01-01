@@ -16,6 +16,7 @@ export interface UserProfile {
   uid: string; // Firebase Auth UID
   email: string;
   displayName: string;
+  username?: string; // Username สำหรับ login
   photoURL?: string | null;
   phone?: string;
   role: 'nurse' | 'hospital' | 'admin';
@@ -92,7 +93,9 @@ export async function registerUser(
   email: string, 
   password: string, 
   displayName: string,
-  role: 'nurse' | 'hospital' = 'nurse'
+  role: 'nurse' | 'hospital' = 'nurse',
+  username?: string,
+  phone?: string
 ): Promise<UserProfile> {
   try {
     // Create Firebase Auth user
@@ -111,6 +114,8 @@ export async function registerUser(
       uid: user.uid,
       email,
       displayName,
+      username: username || undefined,
+      phone: phone || undefined,
       role: finalRole,
       isAdmin,
       createdAt: new Date(),
@@ -237,6 +242,25 @@ export async function loginWithGoogle(idToken: string): Promise<UserProfile> {
   } catch (error: any) {
     console.error('Error logging in with Google:', error);
     throw new Error('เข้าสู่ระบบด้วย Google ไม่สำเร็จ');
+  }
+}
+
+// Find user email by username
+export async function findEmailByUsername(username: string): Promise<string | null> {
+  try {
+    const { collection, query, where, getDocs } = await import('firebase/firestore');
+    const usersRef = collection(db, USERS_COLLECTION);
+    const q = query(usersRef, where('username', '==', username.toLowerCase()));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const userData = querySnapshot.docs[0].data();
+      return userData.email;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error finding email by username:', error);
+    return null;
   }
 }
 

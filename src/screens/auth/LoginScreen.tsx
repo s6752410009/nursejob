@@ -110,7 +110,7 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
     const newErrors: { email?: string; password?: string } = {};
 
     if (!email.trim()) {
-      newErrors.email = 'กรุณากรอกอีเมล';
+      newErrors.email = 'กรุณากรอกอีเมล หรือ Username';
     }
 
     if (!password) {
@@ -132,22 +132,24 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
     
     if (!validateForm()) return;
 
-    const trimmedEmail = email.trim();
+    const trimmedInput = email.trim();
 
     try {
-      // ตรวจสอบว่าเป็น admin username หรือไม่
-      const adminCredential = validateAdminCredentials(trimmedEmail, password);
+      // Login ผ่าน AuthContext (รองรับทั้ง email, username, และ admin)
+      await login(trimmedInput, password);
       
-      if (adminCredential) {
-        // Login เป็น Admin ผ่าน AuthContext
-        await loginAsAdmin(trimmedEmail, password);
-      } else {
-        // Login ปกติด้วย Firebase Auth
-        await login(trimmedEmail, password);
-      }
-      // Navigation will be handled by the auth state change
+      // Show success alert
+      Alert.alert(
+        '✅ เข้าสู่ระบบสำเร็จ',
+        'ยินดีต้อนรับกลับมา!',
+        [{ text: 'ตกลง' }]
+      );
     } catch (err: any) {
-      Alert.alert('เข้าสู่ระบบไม่สำเร็จ', err.message || 'กรุณาลองใหม่อีกครั้ง');
+      Alert.alert(
+        '❌ เข้าสู่ระบบไม่สำเร็จ', 
+        err.message || 'กรุณาลองใหม่อีกครั้ง',
+        [{ text: 'ตกลง' }]
+      );
     }
   };
 
@@ -182,18 +184,18 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
           {/* Login Form */}
           <View style={styles.form}>
             <Input
-              label="อีเมล"
+              label="อีเมล หรือ Username"
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
                 if (errors.email) setErrors({ ...errors, email: undefined });
               }}
-              placeholder="example@email.com"
+              placeholder="อีเมล หรือ Username"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
               error={errors.email}
-              icon={<Text>📧</Text>}
+              icon={<Text>👤</Text>}
             />
 
             <Input

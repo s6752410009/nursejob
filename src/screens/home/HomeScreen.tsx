@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { JobCard } from '../../components/job/JobCard';
 import { Loading, EmptyState, ModalContainer, Chip, Button, Avatar } from '../../components/common';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, PROVINCES, DEPARTMENTS, BANGKOK_DISTRICTS } from '../../theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, PROVINCES, DEPARTMENTS, DISTRICTS_BY_PROVINCE } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { getJobs, searchJobs } from '../../services/jobService';
 import { JobPost, MainTabParamList, JobFilters } from '../../types';
@@ -339,18 +339,20 @@ function FilterModal({ visible, onClose, filters, setFilters, onApply, onClear }
           </View>
         </View>
 
-        {/* District - show only for Bangkok */}
-        {filters.province === 'กรุงเทพมหานคร' && (
+        {/* District - show for all provinces */}
+        {filters.province && DISTRICTS_BY_PROVINCE[filters.province] && (
           <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>เขต</Text>
+            <Text style={styles.filterLabel}>
+              {filters.province === 'กรุงเทพมหานคร' ? 'เขต' : 'อำเภอ'}
+            </Text>
             <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
               <View style={styles.filterOptions}>
                 <Chip
-                  label="ทุกเขต"
+                  label={filters.province === 'กรุงเทพมหานคร' ? 'ทุกเขต' : 'ทุกอำเภอ'}
                   selected={!filters.district}
                   onPress={() => setFilters({ ...filters, district: '' })}
                 />
-                {BANGKOK_DISTRICTS.map((district) => (
+                {DISTRICTS_BY_PROVINCE[filters.province].map((district) => (
                   <Chip
                     key={district}
                     label={district}

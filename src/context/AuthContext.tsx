@@ -183,9 +183,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setError(null);
     try {
       const profile = await loginAsAdminService(username, password);
-      setUser(profile);
+      // Save to AsyncStorage first
       await AsyncStorage.setItem('user', JSON.stringify(profile));
       await AsyncStorage.setItem('isAdminSession', 'true');
+      // Then update state - this will trigger re-render and navigation
+      setUser(profile);
+      setIsInitialized(true);
       setShowLoginModal(false);
       // Execute pending action after login
       if (pendingAction) {

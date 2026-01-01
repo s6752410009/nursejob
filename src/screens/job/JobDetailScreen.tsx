@@ -22,7 +22,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme
 import { useAuth } from '../../context/AuthContext';
 import { contactForShift } from '../../services/jobService';
 import { JobPost, RootStackParamList } from '../../types';
-import { formatDate, formatRelativeTime, callPhone, openLine, openMaps } from '../../utils/helpers';
+import { formatDate, formatRelativeTime, callPhone, openLine, openMapsDirections } from '../../utils/helpers';
 
 // ============================================
 // Types
@@ -133,12 +133,28 @@ export default function JobDetailScreen({ navigation, route }: Props) {
     }
   };
 
-  // Handle directions
+  // Handle directions - open Google Maps with route
   const handleDirections = () => {
+    // สร้าง search term รวมชื่อสถานที่และที่ตั้ง
+    let searchTerm = '';
+    
     if (job.location?.hospital) {
-      openMaps(job.location.hospital);
+      searchTerm = job.location.hospital;
+      // เพิ่มจังหวัดเพื่อความแม่นยำ
+      if (job.location?.district) {
+        searchTerm += ` ${job.location.district}`;
+      }
+      if (job.location?.province) {
+        searchTerm += ` ${job.location.province}`;
+      }
     } else if (job.location?.address) {
-      openMaps(job.location.address);
+      searchTerm = job.location.address;
+    } else if (job.location?.province) {
+      searchTerm = job.location.province;
+    }
+    
+    if (searchTerm) {
+      openMapsDirections(searchTerm);
     } else {
       Alert.alert('ไม่มีที่อยู่', 'ประกาศนี้ไม่ได้ระบุที่ตั้ง');
     }

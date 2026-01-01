@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button, Input, Card, Chip, ModalContainer } from '../../components/common';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, DEPARTMENTS, PROVINCES, BANGKOK_DISTRICTS } from '../../theme';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, DEPARTMENTS, PROVINCES, DISTRICTS_BY_PROVINCE } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { createJob } from '../../services/jobService';
 import { MainTabParamList } from '../../types';
@@ -324,9 +324,11 @@ export default function PostJobScreen({ navigation }: Props) {
           </TouchableOpacity>
 
           {/* District */}
-          {form.province === 'กรุงเทพมหานคร' && (
+          {form.province && DISTRICTS_BY_PROVINCE[form.province] && (
             <>
-              <Text style={styles.inputLabel}>เขต</Text>
+              <Text style={styles.inputLabel}>
+                {form.province === 'กรุงเทพมหานคร' ? 'เขต' : 'อำเภอ'}
+              </Text>
               <TouchableOpacity
                 style={styles.selectButton}
                 onPress={() => setShowDistrictModal(true)}
@@ -335,7 +337,7 @@ export default function PostJobScreen({ navigation }: Props) {
                   styles.selectButtonText,
                   !form.district && styles.selectButtonPlaceholder
                 ]}>
-                  {form.district || 'เลือกเขต'}
+                  {form.district || (form.province === 'กรุงเทพมหานคร' ? 'เลือกเขต' : 'เลือกอำเภอ')}
                 </Text>
                 <Text style={styles.selectIcon}>▼</Text>
               </TouchableOpacity>
@@ -420,10 +422,10 @@ export default function PostJobScreen({ navigation }: Props) {
       <ModalContainer
         visible={showDistrictModal}
         onClose={() => setShowDistrictModal(false)}
-        title="เลือกเขต"
+        title={form.province === 'กรุงเทพมหานคร' ? 'เลือกเขต' : 'เลือกอำเภอ'}
       >
         <ScrollView style={styles.modalList}>
-          {BANGKOK_DISTRICTS.map((district) => (
+          {(DISTRICTS_BY_PROVINCE[form.province] || []).map((district) => (
             <TouchableOpacity
               key={district}
               style={styles.modalItem}

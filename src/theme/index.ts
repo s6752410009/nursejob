@@ -178,6 +178,41 @@ export const BANGKOK_DISTRICTS = [
   'ทุ่งครุ', 'บางบอน',
 ] as const;
 
+// อำเภอในนนทบุรี
+export const NONTHABURI_DISTRICTS = [
+  'เมืองนนทบุรี', 'บางกรวย', 'บางใหญ่', 'บางบัวทอง', 'ไทรน้อย', 'ปากเกร็ด',
+] as const;
+
+// อำเภอในปทุมธานี
+export const PATHUMTHANI_DISTRICTS = [
+  'เมืองปทุมธานี', 'คลองหลวง', 'ธัญบุรี', 'หนองเสือ', 'ลาดหลุมแก้ว', 'ลำลูกกา', 'สามโคก',
+] as const;
+
+// อำเภอในสมุทรปราการ
+export const SAMUTPRAKAN_DISTRICTS = [
+  'เมืองสมุทรปราการ', 'บางบ่อ', 'บางพลี', 'พระประแดง', 'พระสมุทรเจดีย์', 'บางเสาธง',
+] as const;
+
+// อำเภอในสมุทรสาคร
+export const SAMUTSAKHON_DISTRICTS = [
+  'เมืองสมุทรสาคร', 'กระทุ่มแบน', 'บ้านแพ้ว',
+] as const;
+
+// อำเภอในนครปฐม
+export const NAKHONPATHOM_DISTRICTS = [
+  'เมืองนครปฐม', 'กำแพงแสน', 'นครชัยศรี', 'ดอนตูม', 'บางเลน', 'สามพราน', 'พุทธมณฑล',
+] as const;
+
+// รวมอำเภอทุกจังหวัด
+export const DISTRICTS_BY_PROVINCE: Record<string, readonly string[]> = {
+  'กรุงเทพมหานคร': BANGKOK_DISTRICTS,
+  'นนทบุรี': NONTHABURI_DISTRICTS,
+  'ปทุมธานี': PATHUMTHANI_DISTRICTS,
+  'สมุทรปราการ': SAMUTPRAKAN_DISTRICTS,
+  'สมุทรสาคร': SAMUTSAKHON_DISTRICTS,
+  'นครปฐม': NAKHONPATHOM_DISTRICTS,
+} as const;
+
 // Position Options
 export const POSITIONS = [
   'พยาบาลวิชาชีพ',

@@ -113,6 +113,41 @@ export const openMaps = (address: string): void => {
   });
 };
 
+// Open Google Maps with directions
+export const openMapsDirections = (destination: string): void => {
+  const encodedDestination = encodeURIComponent(destination);
+  // Use Google Maps directions
+  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedDestination}&travelmode=driving`;
+  
+  Linking.openURL(googleMapsUrl).catch(() => {
+    // Fallback to regular map search
+    openMaps(destination);
+  });
+};
+
+// Open Google Maps with coordinates
+export const openMapsWithCoords = (lat: number, lng: number, label?: string): void => {
+  const encodedLabel = label ? encodeURIComponent(label) : '';
+  const url = Platform.select({
+    ios: `maps:0,0?q=${lat},${lng}${encodedLabel ? `(${encodedLabel})` : ''}`,
+    android: `geo:${lat},${lng}?q=${lat},${lng}${encodedLabel ? `(${encodedLabel})` : ''}`,
+    default: `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`,
+  });
+  
+  Linking.openURL(url as string).catch(() => {
+    Alert.alert('ไม่สามารถเปิดแผนที่ได้');
+  });
+};
+
+// Open Google Maps directions with coordinates
+export const openMapsDirectionsWithCoords = (lat: number, lng: number): void => {
+  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
+  
+  Linking.openURL(googleMapsUrl).catch(() => {
+    Alert.alert('ไม่สามารถเปิดแผนที่ได้');
+  });
+};
+
 // Truncate text
 export const truncateText = (text: string, maxLength: number): string => {
   if (text.length <= maxLength) return text;

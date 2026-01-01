@@ -110,9 +110,8 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
     const newErrors: { email?: string; password?: string } = {};
 
     if (!email.trim()) {
-      newErrors.email = 'กรุณากรอกอีเมลหรือ Username';
+      newErrors.email = 'กรุณากรอกอีเมล';
     }
-    // ไม่ต้องเช็ค email format เพราะอาจเป็น admin username
 
     if (!password) {
       newErrors.password = 'กรุณากรอกรหัสผ่าน';
@@ -183,13 +182,13 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
           {/* Login Form */}
           <View style={styles.form}>
             <Input
-              label="อีเมล / Username (Admin)"
+              label="อีเมล"
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
                 if (errors.email) setErrors({ ...errors, email: undefined });
               }}
-              placeholder="อีเมล หรือ Username สำหรับ Admin"
+              placeholder="example@email.com"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}

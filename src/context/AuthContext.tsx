@@ -79,6 +79,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = subscribeToAuthChanges(async (firebaseUser) => {
+      // Check if this is an admin session (don't override with Firebase state)
+      const isAdminSession = await AsyncStorage.getItem('isAdminSession');
+      
+      if (isAdminSession === 'true') {
+        // Admin session - don't change user state from Firebase listener
+        setIsInitialized(true);
+        return;
+      }
+      
       if (firebaseUser) {
         try {
           const profile = await getUserProfile(firebaseUser.uid);

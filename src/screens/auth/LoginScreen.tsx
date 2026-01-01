@@ -140,7 +140,7 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
       const adminCredential = validateAdminCredentials(trimmedEmail, password);
       
       if (adminCredential) {
-        // Login เป็น Admin
+        // Login เป็น Admin ผ่าน AuthContext
         await loginAsAdmin(trimmedEmail, password);
       } else {
         // Login ปกติด้วย Firebase Auth

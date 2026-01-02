@@ -14,13 +14,15 @@ import {
   Linking,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { Button, Avatar, Badge, Card, ModalContainer } from '../../components/common';
+import { Button, Avatar, Badge, Card, ModalContainer, BackButton, ConfirmModal, SuccessModal, ErrorModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
-import { contactForShift } from '../../services/jobService';
+import { contactForShift, deleteJob, updateJob } from '../../services/jobService';
+import { getOrCreateConversation, reportJob } from '../../services/chatService';
 import { JobPost, RootStackParamList } from '../../types';
 import { formatDate, formatRelativeTime, callPhone, openLine, openMapsDirections } from '../../utils/helpers';
 
@@ -40,7 +42,7 @@ interface Props {
 // ============================================
 const formatShiftRate = (rate: number, type: string): string => {
   const formattedRate = rate.toLocaleString('th-TH');
-  const unit = type === 'hour' ? '/ชม.' : type === 'day' ? '/วัน' : '/กะ';
+  const unit = type === 'hour' ? '/ชม.' : type === 'day' ? '/วัน' : '/เวร';
   return `฿${formattedRate}${unit}`;
 };
 
@@ -56,12 +58,12 @@ const formatShiftDate = (date: Date): string => {
 
 const getShiftTimeLabel = (time: string): string => {
   const timeMap: Record<string, string> = {
-    '08:00-16:00': '☀️ กะเช้า',
-    '16:00-00:00': '🌅 กะบ่าย', 
-    '00:00-08:00': '🌙 กะดึก',
-    '08:00-20:00': '☀️ เช้า-บ่าย',
-    '20:00-08:00': '🌙 บ่าย-ดึก',
-    '00:00-24:00': '⏰ ทั้งวัน',
+    '08:00-16:00': 'เวรเช้า',
+    '16:00-00:00': 'เวรบ่าย', 
+    '00:00-08:00': 'เวรดึก',
+    '08:00-20:00': 'เช้า-บ่าย',
+    '20:00-08:00': 'บ่าย-ดึก',
+    '00:00-24:00': 'ทั้งวัน',
   };
   return timeMap[time] || time;
 };
@@ -77,9 +79,21 @@ export default function JobDetailScreen({ navigation, route }: Props) {
   const [hasContacted, setHasContacted] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isStartingChat, setIsStartingChat] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [isReporting, setIsReporting] = useState(false);
 
   // Check if user is logged in
   const isLoggedIn = isAuthenticated && user;
+  
+  // Check if user is the owner of this job
+  const isOwner = user && (user.uid === job.posterId || user.id === job.posterId);
 
   // Handle contact poster
   const handleContact = () => {
@@ -169,7 +183,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
       const rateText = formatShiftRate(job.shiftRate, job.rateType);
       const dateText = formatShiftDate(job.shiftDate);
       await Share.share({
-        message: `📋 ${job.title}\n📅 ${dateText}\n⏰ ${job.shiftTime}\n💰 ${rateText}\n📍 ${job.location?.hospital || job.location?.province}\n\nดูรายละเอียดที่ NurseShift App`,
+        message: `${job.title}\nวันที่: ${dateText}\nเวลา: ${job.shiftTime}\nค่าตอบแทน: ${rateText}\nสถานที่: ${job.location?.hospital || job.location?.province}\n\nดูรายละเอียดที่ NurseShift App`,
         title: job.title,
       });
     } catch (error) {
@@ -186,6 +200,100 @@ export default function JobDetailScreen({ navigation, route }: Props) {
         isSaved ? 'ยกเลิกการบันทึกแล้ว' : 'บันทึกไว้แล้ว'
       );
     });
+  };
+
+  // Handle start chat with poster
+  const handleStartChat = async () => {
+    requireAuth(async () => {
+      if (!user || !job.posterId) return;
+      
+      // Don't allow chatting with yourself
+      if (user.uid === job.posterId || user.id === job.posterId) {
+        Alert.alert('ไม่สามารถแชทได้', 'คุณไม่สามารถแชทกับตัวเองได้');
+        return;
+      }
+      
+      setIsStartingChat(true);
+      try {
+        const conversationId = await getOrCreateConversation(
+          user.uid,
+          user.displayName || 'ผู้ใช้',
+          job.posterId,
+          job.posterName || 'ผู้โพสต์',
+          job.id,
+          job.title,
+          job.location?.hospital || undefined
+        );
+        
+        // Navigate to chat room
+        (navigation as any).navigate('ChatRoom', {
+          conversationId,
+          recipientName: job.posterName || 'ผู้โพสต์',
+          jobTitle: job.title,
+        });
+      } catch (error: any) {
+        setErrorMessage(error.message || 'ไม่สามารถเริ่มแชทได้ กรุณาลองใหม่');
+        setShowErrorModal(true);
+      } finally {
+        setIsStartingChat(false);
+      }
+    });
+  };
+
+  // Handle report job
+  const handleReportJob = () => {
+    requireAuth(() => {
+      setShowReportModal(true);
+    });
+  };
+
+  const submitReport = async () => {
+    if (!user || !reportReason.trim()) return;
+    
+    setIsReporting(true);
+    try {
+      await reportJob(job.id, user.uid, user.displayName || 'ผู้ใช้', reportReason.trim());
+      setShowReportModal(false);
+      setReportReason('');
+      Alert.alert('รายงานแล้ว', 'ขอบคุณสำหรับการรายงาน ทีมงานจะตรวจสอบโดยเร็ว');
+    } catch (error: any) {
+      setErrorMessage(error.message || 'ไม่สามารถรายงานได้ กรุณาลองใหม่');
+      setShowErrorModal(true);
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
+  // Handle delete job (for owner only)
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteJob(job.id);
+      setShowDeleteModal(false);
+      setShowSuccessModal(true);
+    } catch (error: any) {
+      setShowDeleteModal(false);
+      setErrorMessage(error.message || 'ไม่สามารถลบได้ กรุณาลองใหม่');
+      setShowErrorModal(true);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Handle edit job (for owner only)
+  const handleEdit = () => {
+    (navigation as any).navigate('PostJob', { editJob: job });
+  };
+
+  // Handle mark as filled
+  const handleMarkAsFilled = async () => {
+    try {
+      await updateJob(job.id, { status: 'closed' });
+      Alert.alert('สำเร็จ', 'ปิดรับสมัครแล้ว');
+      navigation.goBack();
+    } catch (error) {
+      Alert.alert('เกิดข้อผิดพลาด', 'กรุณาลองใหม่');
+    }
   };
 
   return (
@@ -205,6 +313,11 @@ export default function JobDetailScreen({ navigation, route }: Props) {
               <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
                 <Text style={styles.actionIcon}>↗️</Text>
               </TouchableOpacity>
+              {!isOwner && (
+                <TouchableOpacity style={styles.actionButton} onPress={handleReportJob}>
+                  <Ionicons name="flag-outline" size={20} color={COLORS.warning} />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -236,10 +349,13 @@ export default function JobDetailScreen({ navigation, route }: Props) {
 
         {/* Shift Details */}
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>📋 รายละเอียดงาน</Text>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="document-text-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>รายละเอียดงาน</Text>
+          </View>
           
           <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>📅</Text>
+            <Ionicons name="calendar-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>วันที่</Text>
               <Text style={styles.detailValue}>{formatShiftDate(job.shiftDate)}</Text>
@@ -247,7 +363,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
           </View>
 
           <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>⏰</Text>
+            <Ionicons name="time-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>เวลา</Text>
               <Text style={styles.detailValue}>{job.shiftTime}</Text>
@@ -255,7 +371,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
           </View>
 
           <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>💰</Text>
+            <Ionicons name="cash-outline" size={20} color={COLORS.success} style={styles.detailIcon} />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>ค่าตอบแทน</Text>
               <Text style={[styles.detailValue, styles.rateValue]}>
@@ -267,11 +383,14 @@ export default function JobDetailScreen({ navigation, route }: Props) {
 
         {/* Location */}
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>📍 สถานที่</Text>
+          <View style={styles.sectionTitleRow}>
+            <Ionicons name="location-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.sectionTitle}>สถานที่</Text>
+          </View>
           
           {job.location?.hospital && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailIcon}>🏥</Text>
+              <Ionicons name="business-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>โรงพยาบาล/สถานที่</Text>
                 <Text style={styles.detailValue}>{job.location.hospital}</Text>
@@ -280,7 +399,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
           )}
 
           <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>🗺️</Text>
+            <Ionicons name="map-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>พื้นที่</Text>
               <Text style={styles.detailValue}>
@@ -292,7 +411,8 @@ export default function JobDetailScreen({ navigation, route }: Props) {
 
           {(job.location?.hospital || job.location?.address) && (
             <TouchableOpacity style={styles.mapButton} onPress={handleDirections}>
-              <Text style={styles.mapButtonText}>🗺️ ดูแผนที่</Text>
+              <Ionicons name="navigate-outline" size={16} color={COLORS.white} />
+              <Text style={styles.mapButtonText}>ดูแผนที่</Text>
             </TouchableOpacity>
           )}
         </Card>
@@ -300,27 +420,64 @@ export default function JobDetailScreen({ navigation, route }: Props) {
         {/* Description - Only show for logged in users */}
         {job.description && isLoggedIn && (
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>📝 รายละเอียดเพิ่มเติม</Text>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="create-outline" size={18} color={COLORS.primary} />
+              <Text style={styles.sectionTitle}>รายละเอียดเพิ่มเติม</Text>
+            </View>
             <Text style={styles.description}>{job.description}</Text>
+          </Card>
+        )}
+
+        {/* Owner Actions - Only show for job owner */}
+        {isOwner && (
+          <Card style={styles.ownerSection}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="settings-outline" size={18} color={COLORS.primary} />
+              <Text style={styles.sectionTitle}>จัดการประกาศ</Text>
+            </View>
+            <Text style={styles.ownerNote}>คุณเป็นเจ้าของประกาศนี้</Text>
+            
+            <View style={styles.ownerActions}>
+              <TouchableOpacity style={styles.ownerButton} onPress={handleEdit}>
+                <Ionicons name="pencil-outline" size={20} color={COLORS.primary} />
+                <Text style={styles.ownerButtonText}>แก้ไข</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.ownerButton} onPress={handleMarkAsFilled}>
+                <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.success} />
+                <Text style={styles.ownerButtonText}>ปิดรับ</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.ownerButton, styles.deleteButton]} 
+                onPress={() => setShowDeleteModal(true)}
+              >
+                <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+                <Text style={[styles.ownerButtonText, styles.deleteButtonText]}>ลบ</Text>
+              </TouchableOpacity>
+            </View>
           </Card>
         )}
 
         {/* Contact - Only show for logged in users */}
         {isLoggedIn ? (
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>📞 ช่องทางติดต่อ</Text>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="call-outline" size={18} color={COLORS.primary} />
+              <Text style={styles.sectionTitle}>ช่องทางติดต่อ</Text>
+            </View>
             
             <View style={styles.contactButtons}>
               {job.contactPhone && (
                 <TouchableOpacity style={styles.contactButton} onPress={handleCall}>
-                  <Text style={styles.contactIcon}>📱</Text>
+                  <Ionicons name="call" size={18} color={COLORS.primary} />
                   <Text style={styles.contactText}>โทร {job.contactPhone}</Text>
                 </TouchableOpacity>
               )}
               
               {job.contactLine && (
                 <TouchableOpacity style={styles.contactButton} onPress={handleLine}>
-                  <Text style={styles.contactIcon}>💬</Text>
+                  <Ionicons name="chatbubble-ellipses" size={18} color={COLORS.success} />
                   <Text style={styles.contactText}>LINE: {job.contactLine}</Text>
                 </TouchableOpacity>
               )}
@@ -329,7 +486,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
         ) : (
           <Card style={styles.lockedSection}>
             <View style={styles.lockedContent}>
-              <Text style={styles.lockedIcon}>🔒</Text>
+              <Ionicons name="lock-closed" size={32} color={COLORS.textMuted} />
               <Text style={styles.lockedTitle}>เข้าสู่ระบบเพื่อดูข้อมูลติดต่อ</Text>
               <Text style={styles.lockedDescription}>
                 สมัครสมาชิกฟรี เพื่อดูรายละเอียดงานและติดต่อผู้โพสต์
@@ -346,7 +503,8 @@ export default function JobDetailScreen({ navigation, route }: Props) {
         {/* Views */}
         {job.viewsCount !== undefined && (
           <View style={styles.viewsRow}>
-            <Text style={styles.viewsText}>👁 {job.viewsCount} คนดู</Text>
+            <Ionicons name="eye-outline" size={14} color={COLORS.textMuted} />
+            <Text style={styles.viewsText}>{job.viewsCount} คนดู</Text>
           </View>
         )}
 
@@ -363,12 +521,46 @@ export default function JobDetailScreen({ navigation, route }: Props) {
           </Text>
         </View>
         
-        <Button
-          title={hasContacted ? '✓ สนใจแล้ว' : 'สนใจงานนี้'}
-          onPress={handleContact}
-          disabled={hasContacted}
-          style={hasContacted ? styles.contactedButton : styles.contactMainButton}
-        />
+        {!isOwner && (
+          <View style={styles.bottomButtons}>
+            {/* Chat Button */}
+            <TouchableOpacity
+              style={styles.chatButton}
+              onPress={handleStartChat}
+              disabled={isStartingChat}
+            >
+              <Ionicons name="chatbubble-outline" size={22} color={COLORS.primary} />
+              <Text style={styles.chatButtonText}>
+                {isStartingChat ? 'กำลังเปิด...' : 'แชท'}
+              </Text>
+            </TouchableOpacity>
+            
+            {/* Contact Button */}
+            <Button
+              title={hasContacted ? '✓ สนใจแล้ว' : 'สนใจงานนี้'}
+              onPress={handleContact}
+              disabled={hasContacted}
+              style={styles.contactMainButton}
+            />
+          </View>
+        )}
+        
+        {isOwner && (
+          <View style={styles.bottomButtons}>
+            <Button
+              title="แก้ไข"
+              variant="outline"
+              onPress={handleEdit}
+              style={{ flex: 1, marginRight: SPACING.sm }}
+            />
+            <Button
+              title="ลบประกาศ"
+              variant="danger"
+              onPress={() => setShowDeleteModal(true)}
+              style={{ flex: 1 }}
+            />
+          </View>
+        )}
       </View>
 
       {/* Contact Modal */}
@@ -404,6 +596,88 @@ export default function JobDetailScreen({ navigation, route }: Props) {
               onPress={submitContact}
               loading={isContacting}
               disabled={isContacting}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </View>
+      </ModalContainer>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        visible={showDeleteModal}
+        title="ลบประกาศ"
+        message={`คุณต้องการลบประกาศ "${job.title}" หรือไม่?\n\nการดำเนินการนี้ไม่สามารถย้อนกลับได้`}
+        confirmText={isDeleting ? 'กำลังลบ...' : 'ลบประกาศ'}
+        cancelText="ยกเลิก"
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteModal(false)}
+        type="danger"
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        title="ลบสำเร็จ"
+        message="ลบประกาศเรียบร้อยแล้ว"
+        icon="✅"
+        onClose={() => {
+          setShowSuccessModal(false);
+          navigation.goBack();
+        }}
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        visible={showErrorModal}
+        title="เกิดข้อผิดพลาด"
+        message={errorMessage}
+        onClose={() => setShowErrorModal(false)}
+      />
+
+      {/* Report Modal */}
+      <ModalContainer visible={showReportModal} onClose={() => setShowReportModal(false)}>
+        <View style={styles.reportModalContent}>
+          <View style={styles.reportHeader}>
+            <Ionicons name="flag" size={32} color={COLORS.warning} />
+            <Text style={styles.reportTitle}>รายงานประกาศ</Text>
+          </View>
+          <Text style={styles.reportSubtitle}>กรุณาระบุเหตุผลในการรายงาน</Text>
+          
+          <View style={styles.reportReasons}>
+            {['ข้อมูลเท็จ', 'หลอกลวง', 'เนื้อหาไม่เหมาะสม', 'อื่นๆ'].map((reason) => (
+              <TouchableOpacity
+                key={reason}
+                style={[
+                  styles.reportReasonButton,
+                  reportReason === reason && styles.reportReasonButtonActive
+                ]}
+                onPress={() => setReportReason(reason)}
+              >
+                <Text style={[
+                  styles.reportReasonText,
+                  reportReason === reason && styles.reportReasonTextActive
+                ]}>
+                  {reason}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.reportButtons}>
+            <Button
+              title="ยกเลิก"
+              variant="outline"
+              onPress={() => {
+                setShowReportModal(false);
+                setReportReason('');
+              }}
+              style={{ flex: 1, marginRight: SPACING.sm }}
+            />
+            <Button
+              title={isReporting ? "กำลังส่ง..." : "ส่งรายงาน"}
+              variant="primary"
+              onPress={submitReport}
+              disabled={!reportReason || isReporting}
               style={{ flex: 1 }}
             />
           </View>
@@ -506,11 +780,16 @@ const styles = StyleSheet.create({
     marginHorizontal: SPACING.md,
     marginTop: SPACING.md,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+    gap: SPACING.xs,
+  },
   sectionTitle: {
     fontSize: FONT_SIZES.md,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: SPACING.md,
   },
 
   // Detail row
@@ -520,7 +799,6 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   detailIcon: {
-    fontSize: 20,
     marginRight: SPACING.sm,
     marginTop: 2,
   },
@@ -562,7 +840,8 @@ const styles = StyleSheet.create({
   mapButtonText: {
     fontSize: FONT_SIZES.sm,
     fontWeight: '500',
-    color: COLORS.primary,
+    color: COLORS.white,
+    marginLeft: SPACING.xs,
   },
 
   // Contact buttons
@@ -576,10 +855,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     borderRadius: BORDER_RADIUS.md,
-  },
-  contactIcon: {
-    fontSize: 20,
-    marginRight: SPACING.sm,
+    gap: SPACING.sm,
   },
   contactText: {
     fontSize: FONT_SIZES.md,
@@ -589,8 +865,11 @@ const styles = StyleSheet.create({
 
   // Views
   viewsRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: SPACING.md,
+    gap: SPACING.xs,
   },
   viewsText: {
     fontSize: FONT_SIZES.sm,
@@ -606,7 +885,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: SPACING.md,
-    paddingBottom: Platform.OS === 'ios' ? 34 : SPACING.md,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 30,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
@@ -624,9 +903,32 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.success,
   },
-  contactMainButton: {
+  bottomButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
     marginLeft: SPACING.md,
+  },
+  chatButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primaryBackground,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    marginRight: SPACING.sm,
+  },
+  chatButtonText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginLeft: SPACING.xs,
+  },
+  contactMainButton: {
+    flex: 1,
   },
   contactedButton: {
     backgroundColor: COLORS.textMuted,
@@ -702,5 +1004,100 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: SPACING.xs,
     lineHeight: 20,
+  },
+
+  // Owner Section
+  ownerSection: {
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.md,
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fbbf24',
+  },
+  ownerNote: {
+    fontSize: FONT_SIZES.sm,
+    color: '#92400e',
+    marginBottom: SPACING.md,
+  },
+  ownerActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  ownerButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+    marginHorizontal: SPACING.xs,
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  ownerButtonIcon: {
+    fontSize: 24,
+    marginBottom: SPACING.xs,
+  },
+  ownerButtonText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  deleteButton: {
+    backgroundColor: '#fef2f2',
+    borderColor: '#fecaca',
+  },
+  deleteButtonText: {
+    color: COLORS.error,
+  },
+
+  // Report Modal
+  reportModalContent: {
+    padding: SPACING.lg,
+  },
+  reportHeader: {
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  reportTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginTop: SPACING.sm,
+  },
+  reportSubtitle: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SPACING.md,
+  },
+  reportReasons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+    marginBottom: SPACING.lg,
+  },
+  reportReasonButton: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  reportReasonButtonActive: {
+    backgroundColor: COLORS.warning,
+    borderColor: COLORS.warning,
+  },
+  reportReasonText: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.text,
+  },
+  reportReasonTextActive: {
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+  reportButtons: {
+    flexDirection: 'row',
+    marginTop: SPACING.md,
   },
 });

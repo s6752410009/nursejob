@@ -2,14 +2,16 @@
 // APP NAVIGATOR - Production Ready
 // ============================================
 
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useRef } from 'react';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, View, StyleSheet, ActivityIndicator } from 'react-native';
+import { Text, View, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 // Context
 import { useAuth } from '../context/AuthContext';
+import { ChatNotificationProvider, useChatNotification } from '../context/ChatNotificationContext';
 
 // Types
 import { RootStackParamList, AuthStackParamList, MainTabParamList } from '../types';
@@ -18,6 +20,9 @@ import { RootStackParamList, AuthStackParamList, MainTabParamList } from '../typ
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import EmailVerificationScreen from '../screens/auth/EmailVerificationScreen';
+import OTPVerificationScreen from '../screens/auth/OTPVerificationScreen';
+import CompleteRegistrationScreen from '../screens/auth/CompleteRegistrationScreen';
 
 // Main Screens
 import HomeScreen from '../screens/home/HomeScreen';
@@ -31,6 +36,7 @@ import FavoritesScreen from '../screens/favorites/FavoritesScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import NotificationsScreen from '../screens/notifications/NotificationsScreen';
 import DocumentsScreen from '../screens/documents/DocumentsScreen';
+import MyPostsScreen from '../screens/myposts/MyPostsScreen';
 import ApplicantsScreen from '../screens/applicants/ApplicantsScreen';
 import ReviewsScreen from '../screens/reviews/ReviewsScreen';
 import HelpScreen from '../screens/help/HelpScreen';
@@ -64,6 +70,9 @@ function AuthNavigator() {
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Register" component={RegisterScreen} />
       <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <AuthStack.Screen name="EmailVerification" component={EmailVerificationScreen} />
+      <AuthStack.Screen name="OTPVerification" component={OTPVerificationScreen} />
+      <AuthStack.Screen name="CompleteRegistration" component={CompleteRegistrationScreen} />
       <AuthStack.Screen name="Terms" component={TermsScreen} />
       <AuthStack.Screen name="Privacy" component={PrivacyScreen} />
     </AuthStack.Navigator>
@@ -75,16 +84,28 @@ function AuthNavigator() {
 // ============================================
 interface TabIconProps {
   focused: boolean;
-  icon: string;
+  iconName: keyof typeof Ionicons.glyphMap;
   label: string;
+  badgeCount?: number;
 }
 
-function TabIcon({ focused, icon, label }: TabIconProps) {
+function TabIcon({ focused, iconName, label, badgeCount }: TabIconProps) {
   return (
     <View style={styles.tabIconContainer}>
-      <Text style={[styles.tabIcon, focused && styles.tabIconActive]}>
-        {icon}
-      </Text>
+      <View>
+        <Ionicons
+          name={iconName}
+          size={24}
+          color={focused ? COLORS.primary : COLORS.textMuted}
+        />
+        {badgeCount !== undefined && badgeCount > 0 && (
+          <View style={styles.tabBadge}>
+            <Text style={styles.tabBadgeText}>
+              {badgeCount > 9 ? '9+' : badgeCount}
+            </Text>
+          </View>
+        )}
+      </View>
       <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>
         {label}
       </Text>
@@ -96,6 +117,8 @@ function TabIcon({ focused, icon, label }: TabIconProps) {
 // MAIN TAB NAVIGATOR
 // ============================================
 function MainTabNavigator() {
+  const { unreadCount } = useChatNotification();
+  
   return (
     <Tab.Navigator
       screenOptions={{
@@ -111,7 +134,7 @@ function MainTabNavigator() {
         component={HomeScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="🏠" label="หน้าแรก" />
+            <TabIcon focused={focused} iconName={focused ? 'home' : 'home-outline'} label="หน้าแรก" />
           ),
         }}
       />
@@ -120,7 +143,7 @@ function MainTabNavigator() {
         component={ChatListScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="💬" label="ข้อความ" />
+            <TabIcon focused={focused} iconName={focused ? 'chatbubbles' : 'chatbubbles-outline'} label="ข้อความ" badgeCount={unreadCount} />
           ),
         }}
       />
@@ -129,7 +152,7 @@ function MainTabNavigator() {
         component={PostJobScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="📝" label="ลงประกาศ" />
+            <TabIcon focused={focused} iconName={focused ? 'add-circle' : 'add-circle-outline'} label="ลงประกาศ" />
           ),
         }}
       />
@@ -138,7 +161,7 @@ function MainTabNavigator() {
         component={ProfileScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} icon="👤" label="โปรไฟล์" />
+            <TabIcon focused={focused} iconName={focused ? 'person' : 'person-outline'} label="โปรไฟล์" />
           ),
         }}
       />
@@ -211,6 +234,15 @@ function RootNavigator() {
       <RootStack.Screen 
         name="Documents" 
         component={DocumentsScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+
+      {/* My Posts - ประกาศของฉัน */}
+      <RootStack.Screen 
+        name="MyPosts" 
+        component={MyPostsScreen}
         options={{
           animation: 'slide_from_right',
         }}
@@ -300,14 +332,17 @@ function LoadingScreen() {
 // ============================================
 export default function AppNavigator() {
   const { isInitialized } = useAuth();
+  const navigationRef = useRef<NavigationContainerRef<any>>(null);
 
   if (!isInitialized) {
     return <LoadingScreen />;
   }
 
   return (
-    <NavigationContainer>
-      <RootNavigator />
+    <NavigationContainer ref={navigationRef}>
+      <ChatNotificationProvider navigation={navigationRef.current}>
+        <RootNavigator />
+      </ChatNotificationProvider>
     </NavigationContainer>
   );
 }
@@ -321,31 +356,40 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    height: 65,
-    paddingBottom: 8,
+    height: Platform.OS === 'android' ? 90 : 85,
+    paddingBottom: Platform.OS === 'android' ? 30 : 25,
     paddingTop: 8,
   },
   tabIconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabIcon: {
-    fontSize: 24,
-  },
-  tabIconActive: {
-    transform: [{ scale: 1.1 }],
-  },
   tabLabel: {
     fontSize: 10,
     color: COLORS.textMuted,
-    marginTop: 2,
+    marginTop: 4,
   },
   tabLabelActive: {
     color: COLORS.primary,
     fontWeight: '600',
   },
-
-
+  tabBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -12,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  tabBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
 
   // Loading Screen
   loadingContainer: {

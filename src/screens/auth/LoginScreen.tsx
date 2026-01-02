@@ -18,7 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
-import { Button, Input, Divider } from '../../components/common';
+import { Button, Input, Divider, SuccessModal, ErrorModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { AuthStackParamList } from '../../types';
@@ -60,6 +60,9 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Auth context
   const { login, loginWithGoogle, loginAsAdmin, isLoading, error, clearError } = useAuth();
@@ -85,9 +88,11 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
     setGoogleLoading(true);
     try {
       await loginWithGoogle(idToken);
-      // Navigation will be handled by the auth state change
+      // Navigate back to main after successful Google login
+      setShowSuccessModal(true);
     } catch (err: any) {
-      Alert.alert('เข้าสู่ระบบไม่สำเร็จ', err.message || 'กรุณาลองใหม่อีกครั้ง');
+      setErrorMessage(err.message || 'กรุณาลองใหม่อีกครั้ง');
+      setShowErrorModal(true);
     } finally {
       setGoogleLoading(false);
     }
@@ -138,18 +143,16 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
       // Login ผ่าน AuthContext (รองรับทั้ง email, username, และ admin)
       await login(trimmedInput, password);
       
-      // Show success alert
-      Alert.alert(
-        '✅ เข้าสู่ระบบสำเร็จ',
-        'ยินดีต้อนรับกลับมา!',
-        [{ text: 'ตกลง' }]
-      );
+      // Show success modal and navigate back
+      setShowSuccessModal(true);
     } catch (err: any) {
-      Alert.alert(
-        '❌ เข้าสู่ระบบไม่สำเร็จ', 
-        err.message || 'กรุณาลองใหม่อีกครั้ง',
-        [{ text: 'ตกลง' }]
-      );
+      // Check if email not verified - navigate to verification screen
+      if (err.code === 'email-not-verified') {
+        navigation.navigate('EmailVerification', { email: err.email || trimmedInput });
+        return;
+      }
+      setErrorMessage(err.message || 'กรุณาลองใหม่อีกครั้ง');
+      setShowErrorModal(true);
     }
   };
 
@@ -283,6 +286,27 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        title="เข้าสู่ระบบสำเร็จ"
+        message="ยินดีต้อนรับกลับมา!"
+        icon="✅"
+        buttonText="ตกลง"
+        onClose={() => {
+          setShowSuccessModal(false);
+          navigation.getParent()?.goBack();
+        }}
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        visible={showErrorModal}
+        title="เข้าสู่ระบบไม่สำเร็จ"
+        message={errorMessage}
+        onClose={() => setShowErrorModal(false)}
+      />
     </SafeAreaView>
   );
 }

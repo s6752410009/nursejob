@@ -12,12 +12,13 @@ import {
   Alert,
   TextInput,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import { Button, Avatar, Card, Loading, ModalContainer, Input, Badge, Divider } from '../../components/common';
+import { Button, Avatar, Card, Loading, ModalContainer, Input, Badge, Divider, ConfirmModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, POSITIONS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { getUserShiftContacts } from '../../services/jobService';
@@ -48,6 +49,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [editForm, setEditForm] = useState({
@@ -110,26 +112,21 @@ export default function ProfileScreen({ navigation }: Props) {
     }
   }, [showEditModal, user]);
 
-  // Handle logout
+  // Handle logout - show modal
   const handleLogout = () => {
-    Alert.alert(
-      'ออกจากระบบ',
-      'คุณต้องการออกจากระบบหรือไม่?',
-      [
-        { text: 'ยกเลิก', style: 'cancel' },
-        { 
-          text: 'ออกจากระบบ', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await logout();
-            } catch (error) {
-              console.error('Logout error:', error);
-            }
-          }
-        },
-      ]
-    );
+    setShowLogoutModal(true);
+  };
+
+  // Confirm logout
+  const confirmLogout = async () => {
+    setShowLogoutModal(false);
+    try {
+      await logout();
+      // Don't show success modal - user will be logged out immediately
+      // The ProfileScreen will unmount because isAuthenticated becomes false
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   // Handle photo change
@@ -225,8 +222,12 @@ export default function ProfileScreen({ navigation }: Props) {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>โปรไฟล์</Text>
-          <TouchableOpacity onPress={handleLogout}>
-            <Text style={styles.logoutText}>ออกจากระบบ</Text>
+          <TouchableOpacity 
+            onPress={handleLogout}
+            activeOpacity={0.7}
+            style={styles.logoutButton}
+          >
+            <Text style={styles.logoutText}>🚪 ออกจากระบบ</Text>
           </TouchableOpacity>
         </View>
 
@@ -248,8 +249,16 @@ export default function ProfileScreen({ navigation }: Props) {
           
           <View style={styles.roleBadge}>
             <Badge 
-              text={user?.role === 'hospital' ? '🏥 โรงพยาบาล' : '👩‍⚕️ พยาบาล'} 
-              variant="primary"
+              text={
+                user?.role === 'hospital' 
+                  ? '🏥 โรงพยาบาล' 
+                  : user?.role === 'admin'
+                    ? '⚙️ แอดมิน'
+                    : user?.role === 'nurse' || user?.isVerified
+                      ? '👩‍⚕️ พยาบาล ✓'
+                      : '👤 ผู้ใช้งานทั่วไป'
+              } 
+              variant={user?.isVerified ? 'success' : 'primary'}
             />
           </View>
 
@@ -318,7 +327,7 @@ export default function ProfileScreen({ navigation }: Props) {
               <Text style={styles.emptyText}>ยังไม่มีประวัติการติดต่อ</Text>
               <Button
                 title="ค้นหางาน"
-                onPress={() => (navigation as any).navigate('Home')}
+                onPress={() => navigation.getParent()?.navigate('Main', { screen: 'Home' })}
                 variant="outline"
                 size="small"
                 style={{ marginTop: SPACING.sm }}
@@ -391,6 +400,16 @@ export default function ProfileScreen({ navigation }: Props) {
           >
             <Text style={styles.linkIcon}>📄</Text>
             <Text style={styles.linkText}>เอกสารของฉัน</Text>
+            <Text style={styles.linkArrow}>→</Text>
+          </TouchableOpacity>
+          <Divider />
+
+          <TouchableOpacity 
+            style={styles.linkItem} 
+            onPress={() => nav.navigate('MyPosts')}
+          >
+            <Text style={styles.linkIcon}>📝</Text>
+            <Text style={styles.linkText}>ประกาศของฉัน</Text>
             <Text style={styles.linkArrow}>→</Text>
           </TouchableOpacity>
           <Divider />
@@ -519,6 +538,19 @@ export default function ProfileScreen({ navigation }: Props) {
           />
         </View>
       </ModalContainer>
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmModal
+        visible={showLogoutModal}
+        title="ออกจากระบบ"
+        message="คุณต้องการออกจากระบบหรือไม่?"
+        icon="🚪"
+        confirmText="ออกจากระบบ"
+        cancelText="ยกเลิก"
+        type="danger"
+        onConfirm={confirmLogout}
+        onCancel={() => setShowLogoutModal(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -547,6 +579,13 @@ const styles = StyleSheet.create({
   logoutText: {
     color: COLORS.danger,
     fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+  },
+  logoutButton: {
+    padding: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    backgroundColor: '#FEE2E2',
+    borderRadius: BORDER_RADIUS.md,
   },
 
   // Profile Card

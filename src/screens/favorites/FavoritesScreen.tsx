@@ -29,7 +29,7 @@ import { formatRelativeTime } from '../../utils/helpers';
 const formatShiftRate = (rate?: number, type?: string): string => {
   if (!rate) return 'ไม่ระบุ';
   const formattedRate = rate.toLocaleString('th-TH');
-  const unit = type === 'hour' ? '/ชม.' : type === 'day' ? '/วัน' : '/กะ';
+  const unit = type === 'hour' ? '/ชม.' : type === 'day' ? '/วัน' : '/เวร';
   return `฿${formattedRate}${unit}`;
 };
 
@@ -173,8 +173,17 @@ export default function FavoritesScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>รายการโปรด</Text>
-        <Text style={styles.headerCount}>{favorites.length} เวร</Text>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>รายการโปรด</Text>
+          <Text style={styles.headerCount}>{favorites.length} เวร</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </View>
 
       <FlatList
@@ -195,7 +204,7 @@ export default function FavoritesScreen() {
             title="ยังไม่มีรายการโปรด"
             subtitle="กดไอคอน ❤️ ที่งานที่สนใจเพื่อบันทึกไว้ดูภายหลัง"
             actionLabel="ค้นหางาน"
-            onAction={() => (navigation as any).navigate('Home')}
+            onAction={() => navigation.goBack()}
           />
         }
       />
@@ -217,6 +226,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
+  headerCenter: {
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: FONT_SIZES.xl,
     fontWeight: '700',
@@ -225,6 +237,13 @@ const styles = StyleSheet.create({
   headerCount: {
     fontSize: FONT_SIZES.sm,
     color: COLORS.textSecondary,
+  },
+  backButton: {
+    padding: SPACING.xs,
+  },
+  backIcon: {
+    fontSize: FONT_SIZES.xl,
+    color: COLORS.primary,
   },
   list: {
     padding: SPACING.md,

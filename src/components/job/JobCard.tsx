@@ -9,6 +9,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { JobPost } from '../../types';
 import { Badge, Avatar } from '../common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
@@ -22,7 +23,7 @@ const formatShiftRate = (rate: number, rateType: string) => {
   switch (rateType) {
     case 'hour': return `${formattedRate} บาท/ชม.`;
     case 'day': return `${formattedRate} บาท/วัน`;
-    case 'shift': return `${formattedRate} บาท/กะ`;
+    case 'shift': return `${formattedRate} บาท/เวร`;
     default: return `${formattedRate} บาท`;
   }
 };
@@ -113,7 +114,7 @@ export function JobCard({
         <View style={styles.headerInfo}>
           <Text style={styles.posterName} numberOfLines={1}>{job.posterName}</Text>
           <View style={styles.locationRow}>
-            <Text style={styles.locationIcon}>📍</Text>
+            <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} style={styles.locationIcon} />
             <Text style={styles.location} numberOfLines={1}>
               {job.location?.hospital ? `${job.location.hospital}, ` : ''}{job.location?.district}, {job.location?.province}
             </Text>
@@ -125,7 +126,11 @@ export function JobCard({
             onPress={onSave}
             hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
           >
-            <Text style={styles.saveIcon}>{isSaved ? '❤️' : '🤍'}</Text>
+            <Ionicons 
+              name={isSaved ? 'heart' : 'heart-outline'} 
+              size={22} 
+              color={isSaved ? COLORS.error : COLORS.textMuted} 
+            />
           </TouchableOpacity>
         )}
       </View>
@@ -146,18 +151,18 @@ export function JobCard({
       {/* Shift Date & Time */}
       <View style={styles.shiftInfo}>
         <View style={styles.shiftItem}>
-          <Text style={styles.shiftIcon}>📅</Text>
+          <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} style={styles.shiftIcon} />
           <Text style={styles.shiftText}>{formatShiftDate(job.shiftDate)}</Text>
         </View>
         <View style={styles.shiftItem}>
-          <Text style={styles.shiftIcon}>🕐</Text>
+          <Ionicons name="time-outline" size={14} color={COLORS.textSecondary} style={styles.shiftIcon} />
           <Text style={styles.shiftText}>{job.shiftTime || 'ตามตกลง'}</Text>
         </View>
       </View>
 
       {/* Rate */}
       <View style={styles.rateRow}>
-        <Text style={styles.rateIcon}>💰</Text>
+        <Ionicons name="cash-outline" size={16} color={COLORS.success} style={styles.rateIcon} />
         <Text style={styles.rate}>{formatShiftRate(job.shiftRate, job.rateType)}</Text>
       </View>
 
@@ -216,7 +221,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   locationIcon: {
-    fontSize: 12,
     marginRight: 4,
   },
   location: {
@@ -226,9 +230,6 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     padding: SPACING.xs,
-  },
-  saveIcon: {
-    fontSize: 20,
   },
 
   // Title
@@ -259,7 +260,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   shiftIcon: {
-    fontSize: 14,
     marginRight: SPACING.xs,
   },
   shiftText: {
@@ -275,7 +275,6 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.sm,
   },
   rateIcon: {
-    fontSize: 16,
     marginRight: SPACING.xs,
   },
   rate: {

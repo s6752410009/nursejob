@@ -297,6 +297,8 @@ export const ERROR_MESSAGES = {
   'auth/weak-password': 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร',
   'auth/user-not-found': 'ไม่พบบัญชีผู้ใช้นี้',
   'auth/wrong-password': 'รหัสผ่านไม่ถูกต้อง',
+  'auth/invalid-credential': 'อีเมลหรือรหัสผ่านไม่ถูกต้อง',
+  'auth/user-disabled': 'บัญชีนี้ถูกระงับการใช้งาน',
   'auth/too-many-requests': 'ลองเข้าสู่ระบบหลายครั้งเกินไป กรุณารอสักครู่',
   'auth/network-request-failed': 'ไม่สามารถเชื่อมต่อได้ กรุณาตรวจสอบอินเทอร์เน็ต',
   'permission-denied': 'ไม่มีสิทธิ์เข้าถึง',

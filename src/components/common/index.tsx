@@ -18,6 +18,7 @@ import {
   Pressable,
   ImageStyle,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 
 // ============================================
@@ -137,13 +138,14 @@ export function Input({
             styles.input,
             icon && iconPosition === 'left' ? styles.inputWithIconLeft : undefined,
             icon && iconPosition === 'right' ? styles.inputWithIconRight : undefined,
+            multiline && styles.inputMultiline,
             style,
           ]}
           placeholderTextColor={COLORS.textMuted}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          multiline={multiline === true ? true : undefined}
-          editable={editable === false ? false : undefined}
+          multiline={Boolean(multiline)}
+          editable={editable !== false}
           {...props}
         />
         {icon && iconPosition === 'right' && <View style={styles.inputIcon}>{icon}</View>}
@@ -357,9 +359,19 @@ interface EmptyStateProps {
 export function EmptyState({ icon = '📭', title, description, subtitle, actionText, actionLabel, onAction }: EmptyStateProps) {
   const displayDescription = description || subtitle;
   const displayActionText = actionText || actionLabel;
+  
+  // Check if icon is Ionicons name (contains '-') or emoji
+  const isIoniconName = icon.includes('-') || icon.includes('outline');
+  
   return (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyStateIcon}>{icon}</Text>
+      {isIoniconName ? (
+        <View style={styles.emptyStateIconContainer}>
+          <Ionicons name={icon as any} size={64} color={COLORS.textMuted} />
+        </View>
+      ) : (
+        <Text style={styles.emptyStateIcon}>{icon}</Text>
+      )}
       <Text style={styles.emptyStateTitle}>{title}</Text>
       {displayDescription && <Text style={styles.emptyStateDescription}>{displayDescription}</Text>}
       {displayActionText && onAction && (
@@ -561,6 +573,11 @@ const styles = StyleSheet.create({
   inputWithIconRight: {
     paddingRight: 0,
   },
+  inputMultiline: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+    paddingTop: SPACING.sm,
+  },
   inputIcon: {
     paddingHorizontal: SPACING.sm,
   },
@@ -721,6 +738,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: SPACING.xl,
   },
+  emptyStateIconContainer: {
+    marginBottom: SPACING.md,
+  },
   emptyStateIcon: {
     fontSize: 64,
     marginBottom: SPACING.md,
@@ -790,3 +810,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+
+// Re-export ConfirmModal
+export { default as ConfirmModal, SuccessModal, ErrorModal } from './ConfirmModal';
+export { default as TermsConsentModal } from './TermsConsentModal';
+export { default as BackButton } from './BackButton';
+export { PlaceAutocomplete, QuickPlacePicker } from './PlaceAutocomplete';

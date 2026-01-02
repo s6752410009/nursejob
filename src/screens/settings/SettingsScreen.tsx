@@ -13,12 +13,17 @@ import {
   Alert,
   SafeAreaView,
   Linking,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { deleteUserAccount } from '../../services/authService';
+import { getUserSubscription, getSubscriptionStatusDisplay, upgradeToPremium } from '../../services/subscriptionService';
+import { Subscription, SUBSCRIPTION_PLANS } from '../../types';
+import { ConfirmModal, SuccessModal, ErrorModal } from '../../components/common';
 
 interface Settings {
   notifications: {
@@ -61,10 +66,28 @@ export default function SettingsScreen() {
   const { user, logout } = useAuth();
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Subscription state
+  const [subscription, setSubscription] = useState<Subscription>({ plan: 'free' });
+  
+  // Modal states
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadSettings();
+    loadSubscription();
   }, []);
+
+  const loadSubscription = async () => {
+    if (!user?.uid) return;
+    const sub = await getUserSubscription(user.uid);
+    setSubscription(sub);
+  };
 
   const loadSettings = async () => {
     try {
@@ -105,41 +128,44 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'ออกจากระบบ',
-      'คุณต้องการออกจากระบบหรือไม่?',
-      [
-        { text: 'ยกเลิก', style: 'cancel' },
-        {
-          text: 'ออกจากระบบ',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            (navigation as any).reset({
-              index: 0,
-              routes: [{ name: 'Main' }],
-            });
-          },
-        },
-      ]
-    );
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutModal(false);
+    await logout();
+    (navigation as any).reset({
+      index: 0,
+      routes: [{ name: 'Main' }],
+    });
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'ลบบัญชี',
-      'การดำเนินการนี้ไม่สามารถย้อนกลับได้ ข้อมูลทั้งหมดจะถูกลบอย่างถาวร',
-      [
-        { text: 'ยกเลิก', style: 'cancel' },
-        {
-          text: 'ลบบัญชี',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('ติดต่อเรา', 'กรุณาติดต่อ support@nursejob.th เพื่อขอลบบัญชี');
-          },
-        },
-      ]
-    );
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteUserAccount();
+      setShowDeleteModal(false);
+      setShowSuccessModal(true);
+    } catch (error: any) {
+      setShowDeleteModal(false);
+      setErrorMessage(error.message || 'ไม่สามารถลบบัญชีได้ กรุณาลองใหม่');
+      setShowErrorModal(true);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleSuccessClose = async () => {
+    setShowSuccessModal(false);
+    await logout();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Main' as never }],
+    });
   };
 
   const SectionHeader = ({ title }: { title: string }) => (
@@ -200,7 +226,83 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header with Back Button */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>ตั้งค่า</Text>
+        <View style={{ width: 40 }} />
+      </View>
+
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Subscription Card */}
+        <View style={styles.subscriptionSection}>
+          {(() => {
+            const status = getSubscriptionStatusDisplay(subscription);
+            return (
+              <View style={[
+                styles.subscriptionCard,
+                subscription.plan === 'premium' && styles.subscriptionCardPremium
+              ]}>
+                <View style={styles.subscriptionInfo}>
+                  <Text style={styles.subscriptionPlan}>{status.planName}</Text>
+                  <Text style={styles.subscriptionStatus}>{status.statusText}</Text>
+                  {status.expiresText && (
+                    <Text style={styles.subscriptionExpires}>{status.expiresText}</Text>
+                  )}
+                </View>
+                {subscription.plan === 'free' ? (
+                  <TouchableOpacity
+                    style={styles.upgradeBtn}
+                    onPress={() => {
+                      Alert.alert(
+                        '👑 อัพเกรดเป็น Premium',
+                        '฿199/เดือน\n\n✓ โพสต์ได้ไม่จำกัด\n✓ โพสต์อยู่ 30 วัน\n✓ ไม่มีโฆษณา',
+                        [
+                          { text: 'ยกเลิก', style: 'cancel' },
+                          { 
+                            text: 'อัพเกรด', 
+                            onPress: () => {
+                              Alert.alert('💳 ชำระเงิน', 'ระบบชำระเงินกำลังพัฒนา\nติดต่อ admin เพื่ออัพเกรด');
+                            }
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <Ionicons name="star" size={16} color="#FFD700" />
+                    <Text style={styles.upgradeBtnText}>อัพเกรด</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.premiumBadge}>
+                    <Ionicons name="checkmark-circle" size={20} color="#4ADE80" />
+                  </View>
+                )}
+              </View>
+            );
+          })()}
+          
+          {/* Plan Details */}
+          <View style={styles.planDetails}>
+            <View style={styles.planDetailRow}>
+              <Text style={styles.planDetailLabel}>โพสต์ต่อวัน</Text>
+              <Text style={styles.planDetailValue}>
+                {subscription.plan === 'premium' ? 'ไม่จำกัด' : '2 ครั้ง'}
+              </Text>
+            </View>
+            <View style={styles.planDetailRow}>
+              <Text style={styles.planDetailLabel}>อายุโพสต์</Text>
+              <Text style={styles.planDetailValue}>
+                {SUBSCRIPTION_PLANS[subscription.plan].postExpiryDays} วัน
+              </Text>
+            </View>
+          </View>
+        </View>
+
         {/* Notifications */}
         <SectionHeader title="การแจ้งเตือน" />
         <View style={styles.section}>
@@ -330,6 +432,46 @@ export default function SettingsScreen() {
           <Text style={styles.copyright}>© 2025 NurseJob Thailand</Text>
         </View>
       </ScrollView>
+
+      {/* Logout Confirm Modal */}
+      <ConfirmModal
+        visible={showLogoutModal}
+        title="ออกจากระบบ"
+        message="คุณต้องการออกจากระบบหรือไม่?"
+        confirmText="ออกจากระบบ"
+        cancelText="ยกเลิก"
+        onConfirm={confirmLogout}
+        onCancel={() => setShowLogoutModal(false)}
+        type="warning"
+      />
+
+      {/* Delete Account Confirm Modal */}
+      <ConfirmModal
+        visible={showDeleteModal}
+        title="ลบบัญชี"
+        message="การดำเนินการนี้ไม่สามารถย้อนกลับได้ ข้อมูลทั้งหมดจะถูกลบอย่างถาวร คุณแน่ใจหรือไม่?"
+        confirmText={isDeleting ? 'กำลังลบ...' : 'ลบบัญชี'}
+        cancelText="ยกเลิก"
+        onConfirm={confirmDeleteAccount}
+        onCancel={() => setShowDeleteModal(false)}
+        type="danger"
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        title="สำเร็จ"
+        message="ลบบัญชีเรียบร้อยแล้ว"
+        onClose={handleSuccessClose}
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        visible={showErrorModal}
+        title="เกิดข้อผิดพลาด"
+        message={errorMessage}
+        onClose={() => setShowErrorModal(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -405,11 +547,115 @@ const styles = StyleSheet.create({
   appVersion: {
     fontSize: FONT_SIZES.sm,
     color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.xs,
+  },
+  backIcon: {
+    fontSize: FONT_SIZES.xl,
+    color: COLORS.primary,
+    marginRight: SPACING.xs,
+  },
+  backText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.primary,
+    fontWeight: '500',
   },
   copyright: {
     fontSize: FONT_SIZES.xs,
     color: COLORS.textMuted,
     marginTop: SPACING.sm,
+  },
+
+  // Subscription Styles
+  subscriptionSection: {
+    padding: SPACING.md,
+    paddingBottom: 0,
+  },
+  subscriptionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8f9fa',
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  subscriptionCardPremium: {
+    backgroundColor: '#1a1a2e',
+    borderColor: '#FFD700',
+  },
+  subscriptionInfo: {
+    flex: 1,
+  },
+  subscriptionPlan: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  subscriptionStatus: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  subscriptionExpires: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.textMuted,
+    marginTop: 2,
+  },
+  upgradeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.md,
+    gap: 6,
+  },
+  upgradeBtnText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  premiumBadge: {
+    padding: SPACING.xs,
+  },
+  planDetails: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    marginTop: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  planDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.xs,
+  },
+  planDetailLabel: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+  },
+  planDetailValue: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    color: COLORS.text,
   },
 });

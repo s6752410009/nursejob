@@ -20,6 +20,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Loading, EmptyState } from '../../components/common';
 import {
   getUserNotifications,
+  subscribeToNotifications,
   markAsRead,
   markAllAsRead,
   deleteNotification,
@@ -81,9 +82,22 @@ export default function NotificationsScreen() {
     }
   }, [user?.uid]);
 
+  // Real-time notifications subscription
   useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
+    if (!user?.uid) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Subscribe to real-time notification updates
+    const unsubscribe = subscribeToNotifications(user.uid, (newNotifications) => {
+      setNotifications(newNotifications);
+      setIsLoading(false);
+      setIsRefreshing(false);
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -203,11 +217,16 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>การแจ้งเตือน</Text>
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={handleMarkAllRead}>
+        {unreadCount > 0 ? (
+          <TouchableOpacity onPress={handleMarkAllRead} style={styles.markAllButton}>
             <Text style={styles.markAllRead}>อ่านทั้งหมด</Text>
           </TouchableOpacity>
+        ) : (
+          <View style={{ width: 80 }} />
         )}
       </View>
 
@@ -249,10 +268,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
+  backButton: {
+    padding: SPACING.xs,
+  },
   headerTitle: {
     fontSize: FONT_SIZES.xl,
     fontWeight: '700',
     color: COLORS.text,
+    flex: 1,
+    textAlign: 'center',
+  },
+  markAllButton: {
+    width: 80,
+    alignItems: 'flex-end',
   },
   markAllRead: {
     fontSize: FONT_SIZES.sm,

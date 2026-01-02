@@ -11,7 +11,8 @@ import {
   orderBy, 
   limit,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { JobPost, ShiftContact, JobFilters } from '../types';
@@ -26,12 +27,65 @@ const CONTACTS_COLLECTION = 'shift_contacts';
 // Shifts Service - บอร์ดหาคนแทน
 // ==========================================
 
+// Subscribe to real-time jobs updates
+export function subscribeToJobs(callback: (jobs: JobPost[]) => void): () => void {
+  const jobsQuery = query(
+    collection(db, JOBS_COLLECTION),
+    orderBy('createdAt', 'desc'),
+    limit(50)
+  );
+
+  return onSnapshot(jobsQuery, (snapshot) => {
+    const now = new Date();
+    let jobs = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        title: data.title || 'หาคนแทน',
+        posterName: data.posterName || 'ไม่ระบุชื่อ',
+        posterId: data.posterId || '',
+        posterPhoto: data.posterPhoto,
+        department: data.department || 'ทั่วไป',
+        shiftRate: data.shiftRate || 1500,
+        rateType: data.rateType || 'shift',
+        shiftDate: data.shiftDate?.toDate?.() || new Date(),
+        shiftTime: data.shiftTime || '08:00-16:00',
+        location: {
+          province: data.location?.province || 'กรุงเทพมหานคร',
+          district: data.location?.district || '',
+          hospital: data.location?.hospital || '',
+        },
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        updatedAt: data.updatedAt?.toDate?.() || new Date(),
+        expiresAt: data.expiresAt?.toDate?.() || null,
+        status: data.status || 'active',
+        description: data.description || '',
+        contactPhone: data.contactPhone || '',
+        contactLine: data.contactLine || '',
+        viewsCount: data.viewsCount || 0,
+      } as JobPost;
+    });
+    
+    // Filter out expired and inactive posts
+    jobs = jobs.filter(job => {
+      if (job.status !== 'active' && job.status !== 'urgent') return false;
+      if (job.expiresAt && job.expiresAt < now) return false;
+      return true;
+    });
+    
+    callback(jobs);
+  }, (error) => {
+    console.error('Error subscribing to jobs:', error);
+  });
+}
+
 // Get all active shifts with optional filters
 export async function getJobs(filters?: JobFilters): Promise<JobPost[]> {
   try {
+    // Use simpler query to avoid index issues
     let jobsQuery = query(
       collection(db, JOBS_COLLECTION),
-      where('status', 'in', ['active', 'urgent']),
       orderBy('createdAt', 'desc'),
       limit(50)
     );
@@ -66,7 +120,18 @@ export async function getJobs(filters?: JobFilters): Promise<JobPost[]> {
       } as JobPost;
     });
 
-    // Apply client-side filters
+    // Apply client-side filters (including status filter)
+    // Filter active/urgent status first
+    jobs = jobs.filter(job => job.status === 'active' || job.status === 'urgent');
+    
+    // Filter out expired posts
+    const now = new Date();
+    jobs = jobs.filter(job => {
+      if (!job.expiresAt) return true; // No expiry = always show
+      const expiresAt = job.expiresAt instanceof Date ? job.expiresAt : new Date(job.expiresAt);
+      return expiresAt > now;
+    });
+    
     if (filters) {
       if (filters.province) {
         jobs = jobs.filter(job => job.location?.province === filters.province);
@@ -80,11 +145,25 @@ export async function getJobs(filters?: JobFilters): Promise<JobPost[]> {
       if (filters.urgentOnly) {
         jobs = jobs.filter(job => job.status === 'urgent');
       }
+      if (filters.minRate) {
+        jobs = jobs.filter(job => job.shiftRate >= filters.minRate!);
+      }
+      if (filters.maxRate) {
+        jobs = jobs.filter(job => job.shiftRate <= filters.maxRate!);
+      }
       if (filters.sortBy === 'night') {
         jobs = jobs.filter(job => job.shiftTime?.includes('00:00-08:00') || job.shiftTime?.includes('ดึก'));
       } else if (filters.sortBy === 'morning') {
         jobs = jobs.filter(job => job.shiftTime?.includes('08:00-16:00') || job.shiftTime?.includes('เช้า'));
+      } else if (filters.sortBy === 'highestPay') {
+        jobs = jobs.sort((a, b) => (b.shiftRate || 0) - (a.shiftRate || 0));
       }
+    }
+
+    // If no jobs found, return mock data for demo
+    if (jobs.length === 0) {
+      console.log('No jobs found, returning mock data');
+      return getMockJobs();
     }
 
     return jobs;
@@ -150,12 +229,21 @@ export async function searchJobs(searchText: string): Promise<JobPost[]> {
 // Create new job post
 export async function createJob(jobData: Partial<JobPost>): Promise<string> {
   try {
+    // Clean undefined values - Firestore doesn't accept undefined
+    const cleanData: Record<string, any> = {};
+    Object.entries(jobData).forEach(([key, value]) => {
+      if (value !== undefined) {
+        cleanData[key] = value;
+      }
+    });
+
     const docRef = await addDoc(collection(db, JOBS_COLLECTION), {
-      ...jobData,
+      ...cleanData,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       applicationCount: 0,
-      status: jobData.status || 'active',
+      viewsCount: 0,
+      status: cleanData.status || 'active',
     });
     return docRef.id;
   } catch (error) {
@@ -182,6 +270,103 @@ export async function deleteJob(jobId: string): Promise<void> {
     await deleteDoc(docRef);
   } catch (error) {
     console.error('Error deleting job:', error);
+    throw error;
+  }
+}
+
+// Get jobs by user ID (ประกาศของฉัน)
+export async function getUserPosts(userId: string): Promise<JobPost[]> {
+  try {
+    const jobsQuery = query(
+      collection(db, JOBS_COLLECTION),
+      where('posterId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const snapshot = await getDocs(jobsQuery);
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        title: data.title || 'หาคนแทน',
+        posterName: data.posterName || 'ไม่ระบุชื่อ',
+        posterId: data.posterId || '',
+        posterPhoto: data.posterPhoto,
+        department: data.department || 'ทั่วไป',
+        shiftRate: data.shiftRate || 1500,
+        rateType: data.rateType || 'shift',
+        shiftDate: data.shiftDate?.toDate?.() || new Date(),
+        shiftTime: data.shiftTime || '08:00-16:00',
+        location: {
+          province: data.location?.province || 'กรุงเทพมหานคร',
+          district: data.location?.district || '',
+          hospital: data.location?.hospital || '',
+        },
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        updatedAt: data.updatedAt?.toDate?.() || new Date(),
+        status: data.status || 'active',
+        description: data.description || '',
+        viewsCount: data.viewsCount || 0,
+      } as JobPost;
+    });
+  } catch (error) {
+    console.error('Error fetching user posts:', error);
+    return [];
+  }
+}
+
+// Subscribe to user's posts in real-time
+export function subscribeToUserPosts(userId: string, callback: (posts: JobPost[]) => void): () => void {
+  const postsQuery = query(
+    collection(db, JOBS_COLLECTION),
+    where('posterId', '==', userId),
+    orderBy('createdAt', 'desc')
+  );
+
+  return onSnapshot(postsQuery, (snapshot) => {
+    const posts = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        title: data.title || 'หาคนแทน',
+        posterName: data.posterName || 'ไม่ระบุชื่อ',
+        posterId: data.posterId || '',
+        posterPhoto: data.posterPhoto,
+        department: data.department || 'ทั่วไป',
+        shiftRate: data.shiftRate || 1500,
+        rateType: data.rateType || 'shift',
+        shiftDate: data.shiftDate?.toDate?.() || new Date(),
+        shiftTime: data.shiftTime || '08:00-16:00',
+        location: {
+          province: data.location?.province || 'กรุงเทพมหานคร',
+          district: data.location?.district || '',
+          hospital: data.location?.hospital || '',
+        },
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        updatedAt: data.updatedAt?.toDate?.() || new Date(),
+        status: data.status || 'active',
+        description: data.description || '',
+        viewsCount: data.viewsCount || 0,
+      } as JobPost;
+    });
+    callback(posts);
+  }, (error) => {
+    console.error('Error subscribing to user posts:', error);
+  });
+}
+
+// Update job status
+export async function updateJobStatus(jobId: string, status: 'active' | 'urgent' | 'closed'): Promise<void> {
+  try {
+    const docRef = doc(db, JOBS_COLLECTION, jobId);
+    await updateDoc(docRef, {
+      status,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('Error updating job status:', error);
     throw error;
   }
 }
@@ -242,10 +427,10 @@ export async function contactForShift(
 // Get user's interested shifts
 export async function getUserShiftContacts(userId: string): Promise<ShiftContact[]> {
   try {
+    // Use simpler query without orderBy to avoid index requirement
     const contactsQuery = query(
       collection(db, CONTACTS_COLLECTION),
-      where('interestedUserId', '==', userId),
-      orderBy('contactedAt', 'desc')
+      where('interestedUserId', '==', userId)
     );
     
     const snapshot = await getDocs(contactsQuery);
@@ -279,6 +464,13 @@ export async function getUserShiftContacts(userId: string): Promise<ShiftContact
       })
     );
 
+    // Sort client-side
+    contacts.sort((a, b) => {
+      const dateA = a.contactedAt instanceof Date ? a.contactedAt.getTime() : 0;
+      const dateB = b.contactedAt instanceof Date ? b.contactedAt.getTime() : 0;
+      return dateB - dateA;
+    });
+
     return contacts;
   } catch (error) {
     console.error('Error fetching contacts:', error);
@@ -289,21 +481,30 @@ export async function getUserShiftContacts(userId: string): Promise<ShiftContact
 // Get contacts for a shift (for poster)
 export async function getShiftContacts(jobId: string): Promise<ShiftContact[]> {
   try {
+    // Use simpler query without orderBy to avoid index requirement
     const contactsQuery = query(
       collection(db, CONTACTS_COLLECTION),
-      where('jobId', '==', jobId),
-      orderBy('contactedAt', 'desc')
+      where('jobId', '==', jobId)
     );
     
     const snapshot = await getDocs(contactsQuery);
-    return snapshot.docs.map(doc => ({
+    const contacts = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       contactedAt: doc.data().contactedAt?.toDate() || new Date(),
     } as ShiftContact));
+    
+    // Sort client-side
+    contacts.sort((a, b) => {
+      const dateA = a.contactedAt instanceof Date ? a.contactedAt.getTime() : 0;
+      const dateB = b.contactedAt instanceof Date ? b.contactedAt.getTime() : 0;
+      return dateB - dateA;
+    });
+    
+    return contacts;
   } catch (error) {
     console.error('Error fetching shift contacts:', error);
-    throw error;
+    return []; // Return empty instead of throwing
   }
 }
 
@@ -332,7 +533,7 @@ function getMockJobs(): JobPost[] {
   return [
     {
       id: '1',
-      title: '🔥 หาคนแทนกะดึก ICU ด่วนมาก!',
+      title: '🔥 หาคนแทนเวรดึก ICU ด่วนมาก!',
       posterName: 'พี่หมิว RN',
       posterId: 'u1',
       posterPhoto: 'https://randomuser.me/api/portraits/women/44.jpg',
@@ -353,7 +554,7 @@ function getMockJobs(): JobPost[] {
       updatedAt: new Date(),
       status: 'urgent',
       viewsCount: 45,
-      tags: ['ด่วน', 'ICU', 'กะดึก'],
+      tags: ['ด่วน', 'ICU', 'เวรดึก'],
     },
     {
       id: '2',
@@ -380,12 +581,12 @@ function getMockJobs(): JobPost[] {
     },
     {
       id: '3',
-      title: 'หาคนแทนกะเช้า ER',
+      title: 'หาคนแทนเวรเช้า ER',
       posterName: 'อาร์ม RN',
       posterId: 'u3',
       posterPhoto: 'https://randomuser.me/api/portraits/men/32.jpg',
       department: 'ER',
-      description: 'ติดสอบ หาคนแทนกะเช้าครับ ER busy มาก',
+      description: 'ติดสอบ หาคนแทนเวรเช้าครับ ER busy มาก',
       shiftRate: 1800,
       rateType: 'shift',
       shiftDate: tomorrow,
@@ -427,7 +628,7 @@ function getMockJobs(): JobPost[] {
     },
     {
       id: '5',
-      title: '🔥 ด่วน! หาคนแทนกะบ่าย Pedia',
+      title: '🔥 ด่วน! หาคนแทนเวรบ่าย Pedia',
       posterName: 'มิ้นท์ RN',
       posterId: 'u5',
       posterPhoto: 'https://randomuser.me/api/portraits/women/55.jpg',
@@ -448,11 +649,11 @@ function getMockJobs(): JobPost[] {
       updatedAt: new Date(),
       status: 'urgent',
       viewsCount: 67,
-      tags: ['ด่วน', 'เด็ก', 'กะบ่าย'],
+      tags: ['ด่วน', 'เด็ก', 'เวรบ่าย'],
     },
     {
       id: '6',
-      title: 'รับสมัครกะดึก OPD คลินิก',
+      title: 'รับสมัครเวรดึก OPD คลินิก',
       posterName: 'ก้อย พยาบาล',
       posterId: 'u6',
       posterPhoto: 'https://randomuser.me/api/portraits/women/33.jpg',

@@ -2,6 +2,37 @@
 // TYPE DEFINITIONS - Production Ready
 // ============================================
 
+// ============================================
+// SUBSCRIPTION TYPES
+// ============================================
+export type SubscriptionPlan = 'free' | 'premium';
+
+export interface Subscription {
+  plan: SubscriptionPlan;
+  expiresAt?: Date; // null = never expires (for premium)
+  startedAt?: Date;
+  // Limits for free plan
+  postsToday?: number;
+  lastPostDate?: string; // YYYY-MM-DD format
+}
+
+export const SUBSCRIPTION_PLANS = {
+  free: {
+    name: 'ฟรี',
+    price: 0,
+    postExpiryDays: 2,      // โพสต์หมดอายุใน 2 วัน
+    maxPostsPerDay: 2,      // โพสต์ได้ 2 ครั้งต่อวัน
+    features: ['โพสต์ได้ 2 ครั้ง/วัน', 'โพสต์อยู่ 2 วัน'],
+  },
+  premium: {
+    name: 'Premium',
+    price: 199,
+    postExpiryDays: 30,     // โพสต์อยู่ 30 วัน
+    maxPostsPerDay: null,   // ไม่จำกัด
+    features: ['โพสต์ได้ไม่จำกัด', 'โพสต์อยู่ 30 วัน', 'ไม่มีโฆษณา'],
+  },
+} as const;
+
 // User Types
 export interface UserProfile {
   id: string;
@@ -39,6 +70,8 @@ export interface UserProfile {
     emailNotifications: boolean;
     jobAlerts: boolean;
   };
+  // Subscription
+  subscription?: Subscription;
   createdAt: Date;
   updatedAt?: Date;
   lastActiveAt?: Date;
@@ -97,7 +130,8 @@ export interface Conversation {
   participants: string[];
   participantDetails?: {
     id: string;
-    displayName: string;
+    name?: string;
+    displayName?: string;
     photoURL?: string;
   }[];
   jobId?: string;
@@ -108,8 +142,10 @@ export interface Conversation {
   lastMessageSenderId?: string;
   createdAt: Date;
   unreadCount?: number;
+  unreadBy?: { [userId: string]: number }; // Track unread per user
   isArchived?: boolean;
   isPinned?: boolean;
+  hiddenBy?: string[]; // รายการ userId ที่ซ่อนแชทนี้
 }
 
 export interface Message {
@@ -177,7 +213,9 @@ export interface JobFilters {
   district?: string;
   department?: string;
   urgentOnly?: boolean;
-  sortBy?: 'latest' | 'night' | 'morning' | 'nearest';
+  sortBy?: 'latest' | 'night' | 'morning' | 'nearest' | 'highestPay';
+  minRate?: number;
+  maxRate?: number;
 }
 
 // Navigation Types
@@ -195,6 +233,7 @@ export type RootStackParamList = {
   Settings: undefined;
   Notifications: undefined;
   Favorites: undefined;
+  MyPosts: undefined;
   Documents: undefined;
   Applicants: undefined;
   Reviews: { hospitalId: string; hospitalName: string };
@@ -208,6 +247,19 @@ export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
+  EmailVerification: { email: string };
+  OTPVerification: { 
+    phone: string; 
+    registrationData?: {
+      email?: string;
+      password?: string;
+      displayName?: string;
+    };
+  };
+  CompleteRegistration: { 
+    phone: string; 
+    phoneVerified: boolean;
+  };
   Terms: undefined;
   Privacy: undefined;
 };

@@ -1,5 +1,5 @@
 // ============================================
-// REGISTER SCREEN - Simple with Email, Phone, Username
+// REGISTER SCREEN - Phone OTP Verification First
 // ============================================
 
 import React, { useState } from 'react';
@@ -15,11 +15,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { CommonActions } from '@react-navigation/native';
-import { Button, Input } from '../../components/common';
+import { Button, Input, ErrorModal, TermsConsentModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme';
-import { useAuth } from '../../context/AuthContext';
 import { AuthStackParamList } from '../../types';
+import { sendOTP, isValidThaiPhone } from '../../services/otpService';
+import { Ionicons } from '@expo/vector-icons';
 
 // ============================================
 // Types
@@ -35,20 +35,14 @@ interface Props {
 // ============================================
 export default function RegisterScreen({ navigation }: Props) {
   // Form State
-  const [displayName, setDisplayName] = useState('');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
-  // Auth context
-  const { register, isLoading, error, clearError } = useAuth();
-
-  // Format phone number
+  // Format phone number for display
   const formatPhoneInput = (text: string): string => {
     const cleaned = text.replace(/\D/g, '');
     if (cleaned.length <= 3) return cleaned;
@@ -56,96 +50,71 @@ export default function RegisterScreen({ navigation }: Props) {
     return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
   };
 
-  // Validate phone number
-  const isValidPhone = (phoneNumber: string): boolean => {
-    if (!phoneNumber) return true; // Phone is optional
-    const cleaned = phoneNumber.replace(/\D/g, '');
-    return /^0[689]\d{8}$/.test(cleaned);
-  };
-
-  // Validate username
-  const isValidUsername = (name: string): boolean => {
-    if (!name) return true; // Username is optional
-    return /^[a-zA-Z0-9_]{3,20}$/.test(name);
-  };
-
   // Validate form
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
+    const cleanedPhone = phone.replace(/\D/g, '');
 
-    if (!displayName.trim()) {
-      newErrors.displayName = 'กรุณากรอกชื่อ-นามสกุล';
-    } else if (displayName.trim().length < 2) {
-      newErrors.displayName = 'ชื่อต้องมีอย่างน้อย 2 ตัวอักษร';
-    }
-
-    if (username.trim() && !isValidUsername(username.trim())) {
-      newErrors.username = 'Username ต้องเป็น a-z, 0-9, _ และ 3-20 ตัวอักษร';
-    }
-
-    if (!email.trim()) {
-      newErrors.email = 'กรุณากรอกอีเมล';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'รูปแบบอีเมลไม่ถูกต้อง';
-    }
-
-    if (phone && !isValidPhone(phone)) {
-      newErrors.phone = 'รูปแบบเบอร์โทรไม่ถูกต้อง';
-    }
-
-    if (!password) {
-      newErrors.password = 'กรุณากรอกรหัสผ่าน';
-    } else if (password.length < 6) {
-      newErrors.password = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
-    }
-
-    if (!confirmPassword) {
-      newErrors.confirmPassword = 'กรุณายืนยันรหัสผ่าน';
-    } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'รหัสผ่านไม่ตรงกัน';
-    }
-
-    if (!agreeTerms) {
-      newErrors.terms = 'กรุณายอมรับข้อตกลงและเงื่อนไข';
+    if (!cleanedPhone) {
+      newErrors.phone = 'กรุณากรอกเบอร์โทรศัพท์';
+    } else if (!isValidThaiPhone(cleanedPhone)) {
+      newErrors.phone = 'รูปแบบเบอร์โทรไม่ถูกต้อง (เช่น 08X-XXX-XXXX)';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle register
-  const handleRegister = async () => {
-    clearError();
-    
+  // Handle continue button press - show terms modal first
+  const handleContinuePress = () => {
     if (!validateForm()) return;
+    
+    // Show terms modal for user to accept
+    setShowTermsModal(true);
+  };
+
+  // Handle send OTP after accepting terms
+  const handleSendOTP = async () => {
+    setShowTermsModal(false);
+    setIsLoading(true);
 
     try {
-      await register(
-        email.trim(), 
-        password, 
-        displayName.trim(), 
-        'nurse',
-        username.trim() || undefined,
-        phone.replace(/\D/g, '') || undefined
-      );
+      const cleanedPhone = phone.replace(/\D/g, '');
+      const result = await sendOTP(cleanedPhone);
       
-      // Show success alert
-      Alert.alert(
-        '🎉 สมัครสมาชิกสำเร็จ',
-        'ยินดีต้อนรับสู่ NurseShift!\nคุณสามารถเริ่มใช้งานได้เลย',
-        [{ 
-          text: 'เริ่มใช้งาน',
-          onPress: () => {
-            // Navigation will be handled by auth state change
-          }
-        }]
-      );
+      if (result.success) {
+        // Show OTP code in dev mode
+        if (__DEV__ && result.otp) {
+          Alert.alert(
+            '🔧 Dev Mode',
+            `OTP Code: ${result.otp}\n\n(ใน Production จะส่ง SMS จริง)`,
+            [
+              {
+                text: 'ตกลง',
+                onPress: () => {
+                  // Navigate to OTP verification
+                  navigation.navigate('OTPVerification', {
+                    phone: cleanedPhone,
+                  });
+                },
+              },
+            ]
+          );
+        } else {
+          // Navigate to OTP verification
+          navigation.navigate('OTPVerification', {
+            phone: cleanedPhone,
+          });
+        }
+      } else {
+        setErrorMessage(result.error || 'ไม่สามารถส่ง OTP ได้');
+        setShowErrorModal(true);
+      }
     } catch (err: any) {
-      Alert.alert(
-        '❌ สมัครสมาชิกไม่สำเร็จ', 
-        err.message || 'กรุณาลองใหม่อีกครั้ง',
-        [{ text: 'ตกลง' }]
-      );
+      setErrorMessage(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+      setShowErrorModal(true);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -174,62 +143,29 @@ export default function RegisterScreen({ navigation }: Props) {
               <Text style={styles.backButtonText}>← ย้อนกลับ</Text>
             </TouchableOpacity>
             <Text style={styles.title}>สมัครสมาชิก</Text>
-            <Text style={styles.subtitle}>สร้างบัญชีเพื่อรับ-ส่งเวร</Text>
+            <Text style={styles.subtitle}>กรอกเบอร์โทรศัพท์เพื่อรับรหัส OTP</Text>
           </View>
 
-          {/* Register Form */}
+          {/* Illustration */}
+          <View style={styles.illustrationContainer}>
+            <View style={styles.illustration}>
+              <Ionicons name="phone-portrait-outline" size={64} color={COLORS.primary} />
+            </View>
+          </View>
+
+          {/* Phone Input Form */}
           <View style={styles.form}>
-            {/* Name */}
-            <Input
-              label="ชื่อ-นามสกุล"
-              value={displayName}
-              onChangeText={(text) => {
-                setDisplayName(text);
-                if (errors.displayName) setErrors({ ...errors, displayName: '' });
-              }}
-              placeholder="ชื่อจริง นามสกุล"
-              error={errors.displayName}
-              icon={<Text>👤</Text>}
-              required
-            />
+            {/* Phone Info */}
+            <View style={styles.infoBox}>
+              <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} />
+              <Text style={styles.infoText}>
+                เราจะส่งรหัส OTP 6 หลักไปยังเบอร์โทรศัพท์ของคุณเพื่อยืนยันตัวตน
+              </Text>
+            </View>
 
-            {/* Username */}
+            {/* Phone Input */}
             <Input
-              label="Username"
-              value={username}
-              onChangeText={(text) => {
-                setUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''));
-                if (errors.username) setErrors({ ...errors, username: '' });
-              }}
-              placeholder="สำหรับใช้ login (เช่น nurse_somchai)"
-              error={errors.username}
-              icon={<Text>@</Text>}
-              autoCapitalize="none"
-            />
-            <Text style={styles.helperText}>
-              💡 ใช้ Username หรือ Email ในการเข้าสู่ระบบได้
-            </Text>
-
-            {/* Email */}
-            <Input
-              label="อีเมล"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (errors.email) setErrors({ ...errors, email: '' });
-              }}
-              placeholder="example@email.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              error={errors.email}
-              icon={<Text>📧</Text>}
-              required
-            />
-
-            {/* Phone */}
-            <Input
-              label="เบอร์โทร"
+              label="เบอร์โทรศัพท์"
               value={phone}
               onChangeText={(text) => {
                 setPhone(formatPhoneInput(text));
@@ -238,80 +174,27 @@ export default function RegisterScreen({ navigation }: Props) {
               placeholder="08X-XXX-XXXX"
               keyboardType="phone-pad"
               error={errors.phone}
-              icon={<Text>📱</Text>}
-            />
-
-            {/* Password */}
-            <Input
-              label="รหัสผ่าน"
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (errors.password) setErrors({ ...errors, password: '' });
-              }}
-              placeholder="อย่างน้อย 6 ตัวอักษร"
-              secureTextEntry={!showPassword}
-              error={errors.password}
-              icon={
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Text>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
-                </TouchableOpacity>
-              }
-              iconPosition="right"
+              icon={<Text style={styles.flagIcon}>🇹🇭</Text>}
+              maxLength={12}
               required
             />
 
-            {/* Confirm Password */}
-            <Input
-              label="ยืนยันรหัสผ่าน"
-              value={confirmPassword}
-              onChangeText={(text) => {
-                setConfirmPassword(text);
-                if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
-              }}
-              placeholder="กรอกรหัสผ่านอีกครั้ง"
-              secureTextEntry={!showPassword}
-              error={errors.confirmPassword}
-              required
-            />
-
-            {/* Terms Agreement */}
-            <View style={styles.termsRow}>
-              <TouchableOpacity
-                style={styles.checkboxContainer}
-                onPress={() => setAgreeTerms(!agreeTerms)}
-              >
-                <View style={[styles.checkbox, agreeTerms && styles.checkboxChecked]}>
-                  {agreeTerms && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-              </TouchableOpacity>
-              <Text style={styles.termsText}>
-                ฉันยอมรับ{' '}
-                <Text style={styles.termsLink}>ข้อตกลงและเงื่อนไข</Text>
-                {' '}และ{' '}
-                <Text style={styles.termsLink}>นโยบายความเป็นส่วนตัว</Text>
-              </Text>
-            </View>
-            {errors.terms && (
-              <Text style={styles.termsError}>{errors.terms}</Text>
-            )}
-
-            {/* Error Message */}
-            {error && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
-            {/* Register Button */}
+            {/* Continue Button */}
             <Button
-              title={isLoading ? 'กำลังสมัคร...' : 'สมัครสมาชิก'}
-              onPress={handleRegister}
+              title={isLoading ? 'กำลังส่ง OTP...' : 'ขอรหัส OTP'}
+              onPress={handleContinuePress}
               loading={isLoading}
               fullWidth
               size="large"
-              style={{ marginTop: SPACING.md }}
+              style={styles.continueButton}
+              icon={<Ionicons name="arrow-forward" size={20} color={COLORS.white} />}
+              iconPosition="right"
             />
+
+            {/* Note */}
+            <Text style={styles.noteText}>
+              📱 รองรับเบอร์ไทยที่ขึ้นต้นด้วย 06, 08, 09
+            </Text>
           </View>
 
           {/* Login Link */}
@@ -323,6 +206,23 @@ export default function RegisterScreen({ navigation }: Props) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Error Modal */}
+      <ErrorModal
+        visible={showErrorModal}
+        title="ส่ง OTP ไม่สำเร็จ"
+        message={errorMessage}
+        onClose={() => setShowErrorModal(false)}
+      />
+
+      {/* Terms Consent Modal */}
+      <TermsConsentModal
+        visible={showTermsModal}
+        onAccept={handleSendOTP}
+        onDecline={() => {
+          setShowTermsModal(false);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -365,75 +265,50 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
 
+  // Illustration
+  illustrationContainer: {
+    alignItems: 'center',
+    marginVertical: SPACING.xl,
+  },
+  illustration: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   // Form
   form: {
     marginBottom: SPACING.xl,
   },
-  helperText: {
-    fontSize: FONT_SIZES.xs,
-    color: COLORS.textSecondary,
-    marginTop: -SPACING.sm,
-    marginBottom: SPACING.md,
-    marginLeft: SPACING.xs,
-  },
-
-  // Terms
-  termsRow: {
+  infoBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: SPACING.md,
+    gap: SPACING.sm,
+    backgroundColor: COLORS.primaryLight,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    marginBottom: SPACING.lg,
   },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: BORDER_RADIUS.sm,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    marginRight: SPACING.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxContainer: {
-    padding: SPACING.xs,
-  },
-  checkboxChecked: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  checkmark: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  termsText: {
+  infoText: {
     flex: 1,
     fontSize: FONT_SIZES.sm,
-    color: COLORS.textSecondary,
+    color: COLORS.primary,
     lineHeight: 20,
   },
-  termsLink: {
-    color: COLORS.primary,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+  flagIcon: {
+    fontSize: 20,
   },
-  termsError: {
-    color: COLORS.danger,
-    fontSize: FONT_SIZES.sm,
-    marginTop: SPACING.xs,
-    marginLeft: 30,
+  continueButton: {
+    marginTop: SPACING.lg,
   },
-
-  // Error
-  errorContainer: {
-    backgroundColor: '#fee2e2',
-    padding: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    marginTop: SPACING.md,
-  },
-  errorText: {
-    color: COLORS.danger,
-    fontSize: FONT_SIZES.sm,
+  noteText: {
+    fontSize: FONT_SIZES.xs,
+    color: COLORS.textMuted,
     textAlign: 'center',
+    marginTop: SPACING.md,
   },
 
   // Footer
@@ -442,6 +317,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingBottom: SPACING.xl,
+    marginTop: 'auto',
   },
   footerText: {
     color: COLORS.textSecondary,

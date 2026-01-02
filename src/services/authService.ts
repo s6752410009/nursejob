@@ -6,6 +6,7 @@ import {
   updateProfile,
   signInWithCredential,
   GoogleAuthProvider,
+  sendEmailVerification,
   User as FirebaseUser
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -19,8 +20,10 @@ export interface UserProfile {
   username?: string; // Username สำหรับ login
   photoURL?: string | null;
   phone?: string;
-  role: 'nurse' | 'hospital' | 'admin';
+  role: 'user' | 'nurse' | 'hospital' | 'admin'; // user = ผู้ใช้ทั่วไป, nurse = พยาบาล (verified)
   isAdmin: boolean; // Admin flag
+  isVerified?: boolean; // สถานะการยืนยันตัวตน (true = พยาบาลที่ผ่านการ verify)
+  emailVerified?: boolean; // สถานะการยืนยัน email
   licenseNumber?: string; // เลขใบประกอบวิชาชีพ
   experience?: number;
   bio?: string;
@@ -93,17 +96,33 @@ export async function registerUser(
   email: string, 
   password: string, 
   displayName: string,
-  role: 'nurse' | 'hospital' = 'nurse',
+  role: 'user' | 'nurse' | 'hospital' = 'user', // Default เป็น user (ผู้ใช้ทั่วไป)
   username?: string,
   phone?: string
 ): Promise<UserProfile> {
   try {
+    // Check if username already exists (if provided)
+    if (username) {
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      const usernameQuery = query(
+        collection(db, USERS_COLLECTION),
+        where('username', '==', username.toLowerCase())
+      );
+      const usernameSnapshot = await getDocs(usernameQuery);
+      if (!usernameSnapshot.empty) {
+        throw new Error('Username นี้ถูกใช้งานแล้ว');
+      }
+    }
+
     // Create Firebase Auth user
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
     // Update display name
     await updateProfile(user, { displayName });
+
+    // Send email verification
+    await sendEmailVerification(user);
 
     // Check if admin
     const isAdmin = isAdminEmail(email);
@@ -118,6 +137,8 @@ export async function registerUser(
       phone: phone || undefined,
       role: finalRole,
       isAdmin,
+      isVerified: false, // ผู้ใช้ใหม่ยังไม่ verified
+      emailVerified: false, // ยังไม่ยืนยัน email
       createdAt: new Date(),
     };
 
@@ -162,8 +183,9 @@ export async function loginUser(email: string, password: string): Promise<UserPr
         uid: user.uid,
         email: user.email || email,
         displayName: user.displayName || email.split('@')[0],
-        role: isAdmin ? 'admin' : 'nurse',
+        role: isAdmin ? 'admin' : 'user', // Default เป็น user
         isAdmin,
+        isVerified: false,
         createdAt: new Date(),
       };
       
@@ -185,18 +207,24 @@ export async function loginUser(email: string, password: string): Promise<UserPr
 
     return userProfile;
   } catch (error: any) {
-    console.error('Error logging in:', error);
-    
     // Translate Firebase errors to Thai
-    if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-      throw new Error('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
-    } else if (error.code === 'auth/invalid-email') {
-      throw new Error('รูปแบบอีเมลไม่ถูกต้อง');
-    } else if (error.code === 'auth/too-many-requests') {
-      throw new Error('มีการพยายามเข้าสู่ระบบมากเกินไป กรุณารอสักครู่');
-    } else if (error.code === 'auth/invalid-credential') {
-      throw new Error('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+    const code = error.code || '';
+    
+    // Also try to extract from message if no code
+    let extractedCode = code;
+    if (!extractedCode) {
+      const match = error.message?.match(/\(([^)]+)\)/);
+      if (match) extractedCode = match[1];
     }
+    
+    if (extractedCode === 'auth/user-not-found' || extractedCode === 'auth/wrong-password' || extractedCode === 'auth/invalid-credential') {
+      throw new Error('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+    } else if (extractedCode === 'auth/invalid-email') {
+      throw new Error('รูปแบบอีเมลไม่ถูกต้อง');
+    } else if (extractedCode === 'auth/too-many-requests') {
+      throw new Error('มีการพยายามเข้าสู่ระบบมากเกินไป กรุณารอสักครู่');
+    }
+    
     throw error;
   }
 }
@@ -371,5 +399,82 @@ export async function resetPassword(email: string): Promise<void> {
       throw new Error('รูปแบบอีเมลไม่ถูกต้อง');
     }
     throw error;
+  }
+}
+
+// Delete user account
+export async function deleteUserAccount(): Promise<void> {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('ไม่พบผู้ใช้ที่เข้าสู่ระบบ');
+    }
+
+    // Delete user document from Firestore
+    const { deleteDoc } = await import('firebase/firestore');
+    await deleteDoc(doc(db, USERS_COLLECTION, user.uid));
+
+    // Delete Firebase Auth user
+    const { deleteUser } = await import('firebase/auth');
+    await deleteUser(user);
+  } catch (error: any) {
+    console.error('Error deleting account:', error);
+    if (error.code === 'auth/requires-recent-login') {
+      throw new Error('กรุณาเข้าสู่ระบบใหม่ก่อนลบบัญชี');
+    }
+    throw error;
+  }
+}
+
+// ==========================================
+// Email Verification Functions
+// ==========================================
+
+// Send verification email
+export async function sendVerificationEmail(): Promise<void> {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('ไม่พบผู้ใช้ที่เข้าสู่ระบบ');
+    }
+    await sendEmailVerification(user);
+  } catch (error: any) {
+    console.error('Error sending verification email:', error);
+    if (error.code === 'auth/too-many-requests') {
+      throw new Error('ส่ง email มากเกินไป กรุณารอสักครู่แล้วลองใหม่');
+    }
+    throw new Error('ไม่สามารถส่ง email ยืนยันได้');
+  }
+}
+
+// Check if email is verified
+export function isEmailVerified(): boolean {
+  const user = auth.currentUser;
+  return user?.emailVerified || false;
+}
+
+// Refresh user to get latest email verification status
+export async function refreshEmailVerificationStatus(): Promise<boolean> {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      return false;
+    }
+    
+    // Reload user to get latest status from Firebase
+    await user.reload();
+    
+    // If verified, update Firestore
+    if (user.emailVerified) {
+      await updateDoc(doc(db, USERS_COLLECTION, user.uid), {
+        emailVerified: true,
+        updatedAt: serverTimestamp(),
+      });
+    }
+    
+    return user.emailVerified;
+  } catch (error) {
+    console.error('Error refreshing verification status:', error);
+    return false;
   }
 }

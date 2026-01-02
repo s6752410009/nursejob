@@ -17,6 +17,8 @@ import {
   isAdminEmail,
   findEmailByUsername,
   validateAdminCredentials,
+  isEmailVerified,
+  sendVerificationEmail,
   UserProfile,
 } from '../services/authService';
 import { getErrorMessage } from '../utils/helpers';
@@ -36,7 +38,7 @@ interface AuthContextType extends AuthState {
   login: (emailOrUsername: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   loginAsAdmin: (username: string, password: string) => Promise<void>;
-  register: (email: string, password: string, displayName: string, role?: 'nurse' | 'hospital', username?: string, phone?: string) => Promise<void>;
+  register: (email: string, password: string, displayName: string, role?: 'user' | 'nurse' | 'hospital', username?: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<UserProfile>) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
@@ -168,7 +170,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       
       const profile = await loginUser(email, password);
+      
+      // Note: Email verification is optional - user can verify later
+      // We allow login without verification but show reminder in profile
+      
+      // Save to AsyncStorage first
+      await AsyncStorage.setItem('user', JSON.stringify(profile));
+      // Then update state - this will trigger re-render and navigation
       setUser(profile);
+      setIsInitialized(true);
       setShowLoginModal(false);
       // Execute pending action after login
       if (pendingAction) {
@@ -178,7 +188,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }, 100);
       }
     } catch (err: any) {
-      const errorMessage = getErrorMessage(err);
+      // If error message is already in Thai (from authService), use it directly
+      const isThai = /[\u0E00-\u0E7F]/.test(err.message || '');
+      const errorMessage = isThai ? err.message : getErrorMessage(err);
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -192,7 +204,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setError(null);
     try {
       const profile = await loginWithGoogleService(idToken);
+      // Save to AsyncStorage first
+      await AsyncStorage.setItem('user', JSON.stringify(profile));
+      // Then update state
       setUser(profile);
+      setIsInitialized(true);
       setShowLoginModal(false);
       // Execute pending action after login
       if (pendingAction) {
@@ -244,7 +260,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     email: string, 
     password: string, 
     displayName: string,
-    role: 'nurse' | 'hospital' = 'nurse',
+    role: 'user' | 'nurse' | 'hospital' = 'user', // Default = ผู้ใช้ทั่วไป
     username?: string,
     phone?: string
   ) => {
@@ -252,7 +268,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setError(null);
     try {
       const profile = await registerUser(email, password, displayName, role, username, phone);
+      // Save to AsyncStorage first
+      await AsyncStorage.setItem('user', JSON.stringify(profile));
+      // Then update state - this will trigger re-render and navigation
       setUser(profile);
+      setIsInitialized(true);
       setShowLoginModal(false);
       if (pendingAction) {
         setTimeout(() => {
@@ -261,7 +281,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }, 100);
       }
     } catch (err: any) {
-      const errorMessage = getErrorMessage(err);
+      // authService already translates errors to Thai, so use err.message directly
+      // Only use getErrorMessage if it's a raw Firebase error
+      const errorMessage = err.code ? getErrorMessage(err) : (err.message || getErrorMessage(err));
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -278,11 +300,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (!isAdminSession) {
         await logoutUser();
       }
+      // Clear AsyncStorage first
+      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('isAdminSession');
+      // Then update state
+      setUser(null);
+    } catch (err: any) {
+      console.error('Logout error:', err);
+      // Still clear state even if error
       setUser(null);
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('isAdminSession');
-    } catch (err: any) {
-      console.error('Logout error:', err);
     } finally {
       setIsLoading(false);
     }

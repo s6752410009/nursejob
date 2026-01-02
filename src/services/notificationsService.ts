@@ -77,21 +77,40 @@ export async function createNotification(
 // Get user notifications
 export async function getUserNotifications(userId: string): Promise<Notification[]> {
   try {
+    // Simple query without orderBy (sorted client-side to avoid index requirement)
     const q = query(
       collection(db, NOTIFICATIONS_COLLECTION),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
+      where('userId', '==', userId)
     );
     const snapshot = await getDocs(q);
     
-    return snapshot.docs.map(doc => ({
+    const notifications = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       createdAt: (doc.data().createdAt as Timestamp)?.toDate() || new Date(),
     })) as Notification[];
+
+    // Sort client-side (newest first)
+    return notifications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   } catch (error) {
     console.error('Error getting notifications:', error);
     return [];
+  }
+}
+
+// Get unread notification count
+export async function getUnreadNotificationCount(userId: string): Promise<number> {
+  try {
+    const q = query(
+      collection(db, NOTIFICATIONS_COLLECTION),
+      where('userId', '==', userId)
+    );
+    const snapshot = await getDocs(q);
+    // Filter client-side
+    return snapshot.docs.filter(doc => doc.data().isRead === false).length;
+  } catch (error) {
+    console.error('Error getting unread count:', error);
+    return 0;
   }
 }
 
@@ -100,10 +119,10 @@ export function subscribeToNotifications(
   userId: string,
   callback: (notifications: Notification[]) => void
 ): () => void {
+  // Simple query without orderBy (sorted client-side to avoid index requirement)
   const q = query(
     collection(db, NOTIFICATIONS_COLLECTION),
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
+    where('userId', '==', userId)
   );
   
   return onSnapshot(q, (snapshot) => {
@@ -113,7 +132,13 @@ export function subscribeToNotifications(
       createdAt: (doc.data().createdAt as Timestamp)?.toDate() || new Date(),
     })) as Notification[];
     
+    // Sort client-side (newest first)
+    notifications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    
     callback(notifications);
+  }, (error) => {
+    console.error('Notification subscription error:', error);
+    callback([]);
   });
 }
 

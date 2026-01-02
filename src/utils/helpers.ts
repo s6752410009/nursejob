@@ -55,8 +55,32 @@ export const formatRelativeTime = (date: Date | string): string => {
 
 // Get Firebase error message in Thai
 export const getErrorMessage = (error: any): string => {
-  const code = error?.code || error?.message || 'default';
-  return ERROR_MESSAGES[code as keyof typeof ERROR_MESSAGES] || ERROR_MESSAGES.default;
+  // Extract error code from various Firebase error formats
+  let code = error?.code || '';
+  
+  // Handle Firebase error message format: "Firebase: Error (auth/xxx)"
+  if (!code && error?.message) {
+    const match = error.message.match(/\(([^)]+)\)/);
+    if (match) {
+      code = match[1];
+    }
+  }
+  
+  // Also check for "auth/xxx" pattern directly in message
+  if (!code && error?.message) {
+    const authMatch = error.message.match(/(auth\/[a-z-]+)/);
+    if (authMatch) {
+      code = authMatch[1];
+    }
+  }
+  
+  // If we found a valid error code, return the mapped message
+  if (code && ERROR_MESSAGES[code as keyof typeof ERROR_MESSAGES]) {
+    return ERROR_MESSAGES[code as keyof typeof ERROR_MESSAGES];
+  }
+  
+  // Fallback to default
+  return ERROR_MESSAGES.default;
 };
 
 // Validate email

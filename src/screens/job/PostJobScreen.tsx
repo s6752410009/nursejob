@@ -850,7 +850,12 @@ export default function PostJobScreen({ navigation, route }: Props) {
             <Text style={styles.upgradeExtraTitle}>💡 หรือซื้อแยก:</Text>
             <Text style={styles.upgradeExtraItem}>• โพสต์เพิ่ม 1 โพสต์ = ฿19</Text>
             <Text style={styles.upgradeExtraItem}>• ต่ออายุโพสต์ 1 วัน = ฿19</Text>
-            <Text style={styles.upgradeExtraItem}>• ปุ่มต้องการด่วน = ฿49</Text>
+            <Text style={styles.upgradeExtraItem}>• ปุ่มต้องการด่วน = ฿49/ครั้ง</Text>
+          </View>
+
+          <View style={[styles.upgradeExtraOptions, { backgroundColor: '#FFF8E1', marginTop: SPACING.sm }]}>
+            <Text style={[styles.upgradeExtraTitle, { color: '#FF8F00' }]}>🎁 โบนัส Premium:</Text>
+            <Text style={[styles.upgradeExtraItem, { color: '#FF8F00' }]}>• แถมปุ่มด่วนฟรี 1 ครั้ง!</Text>
           </View>
 
           <TouchableOpacity

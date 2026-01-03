@@ -147,18 +147,18 @@ export default function MyPostsScreen() {
     if (!selectedPost || !user) return;
 
     try {
-      // Check if user can use free urgent
+      // Check if user can use free urgent (Premium bonus)
       const canUseFree = await canUseFreeUrgent(user.uid);
       
       if (canUseFree) {
-        // Free urgent available - use it directly
+        // Premium user with free urgent bonus
         Alert.alert(
-          '⚡ ทำเครื่องหมายด่วน',
-          'คุณมีสิทธิ์ใช้ปุ่มด่วนฟรี 1 ครั้ง\n\nต้องการใช้ตอนนี้หรือไม่?',
+          '🎁 สิทธิ์พิเศษ Premium',
+          'คุณได้รับปุ่มด่วนฟรี 1 ครั้ง จากการเป็นสมาชิก Premium!\n\nต้องการใช้ตอนนี้หรือไม่?',
           [
             { text: 'ยกเลิก', style: 'cancel' },
             {
-              text: 'ใช้ฟรี',
+              text: '🎁 ใช้สิทธิ์ฟรี',
               onPress: async () => {
                 try {
                   await updateJobStatus(selectedPost.id, 'urgent');

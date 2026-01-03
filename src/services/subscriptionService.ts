@@ -249,16 +249,19 @@ export function getSubscriptionStatusDisplay(subscription: Subscription): {
 
 // ============================================
 // CHECK IF USER CAN USE FREE URGENT
+// Only Premium users get 1 free urgent button
 // ============================================
 export async function canUseFreeUrgent(userId: string): Promise<boolean> {
   try {
     const subscription = await getUserSubscription(userId);
     
-    // Premium users always have free urgent
-    if (subscription.plan === 'premium') return true;
+    // Only premium users get free urgent (1 time bonus)
+    if (subscription.plan === 'premium' && !subscription.freeUrgentUsed) {
+      return true;
+    }
     
-    // Free users: check if they've used their one free urgent
-    return !subscription.freeUrgentUsed;
+    // Free users must pay 49 THB every time
+    return false;
   } catch (error) {
     console.error('Error checking free urgent:', error);
     return false;

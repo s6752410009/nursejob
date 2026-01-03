@@ -695,7 +695,7 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.chatHeader}>
         <TouchableOpacity 
@@ -717,7 +717,7 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
       {/* Messages */}
       <KeyboardAvoidingView 
         style={styles.chatContent}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {isLoading ? (
@@ -1398,6 +1398,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: SPACING.sm,
+    paddingBottom: Platform.OS === 'android' ? SPACING.md : SPACING.sm,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,

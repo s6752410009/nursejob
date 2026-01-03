@@ -15,7 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { Button, Avatar, Badge, Card, ModalContainer, BackButton, ConfirmModal, SuccessModal, ErrorModal } from '../../components/common';
@@ -75,6 +75,7 @@ const getShiftTimeLabel = (time: string): string => {
 export default function JobDetailScreen({ navigation, route }: Props) {
   const { job } = route.params;
   const { user, requireAuth, isAuthenticated } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [isContacting, setIsContacting] = useState(false);
   const [hasContacted, setHasContacted] = useState(false);
@@ -286,7 +287,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header Card */}
         <View style={styles.headerCard}>
@@ -502,7 +503,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
       </ScrollView>
 
       {/* Bottom Action */}
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) + SPACING.md }]}>
         <View style={styles.bottomRate}>
           <Text style={styles.bottomRateLabel}>ค่าตอบแทน</Text>
           <Text style={styles.bottomRateValue}>
@@ -839,7 +840,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: SPACING.md,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 30,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,

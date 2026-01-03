@@ -17,12 +17,13 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { JobCard } from '../../components/job/JobCard';
 import { Loading, EmptyState, ModalContainer, Chip, Button, Avatar } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, PROVINCES, DEPARTMENTS, DISTRICTS_BY_PROVINCE } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { getJobs, searchJobs, subscribeToJobs } from '../../services/jobService';
 import { subscribeToNotifications } from '../../services/notificationsService';
 import { subscribeToFavorites, toggleFavorite, Favorite } from '../../services/favoritesService';
@@ -304,6 +305,8 @@ const urgentStyles = StyleSheet.create({
 export default function HomeScreen({ navigation }: Props) {
   // Auth context
   const { user, requireAuth } = useAuth();
+  const toast = useToast();
+  const insets = useSafeAreaInsets();
 
   // State
   const [jobs, setJobs] = useState<JobPost[]>([]);
@@ -473,12 +476,12 @@ export default function HomeScreen({ navigation }: Props) {
       try {
         const isNowFavorite = await toggleFavorite(user.uid, job.id);
         if (isNowFavorite) {
-          Alert.alert('❤️ บันทึกแล้ว', `เพิ่ม "${job.title}" ไปยังรายการโปรดแล้ว`);
+          toast.success(`เพิ่ม "${job.title}" ไปยังรายการโปรดแล้ว`, '❤️ บันทึกแล้ว');
         } else {
-          Alert.alert('💔 ลบออกแล้ว', `ลบ "${job.title}" ออกจากรายการโปรดแล้ว`);
+          toast.info(`ลบ "${job.title}" ออกจากรายการโปรดแล้ว`, '💔 ลบออกแล้ว');
         }
       } catch (error) {
-        Alert.alert('ข้อผิดพลาด', 'ไม่สามารถบันทึกงานได้');
+        toast.error('ไม่สามารถบันทึกงานได้');
       }
     });
   };
@@ -712,6 +715,8 @@ interface FilterModalProps {
 }
 
 function FilterModal({ visible, onClose, filters, setFilters, onApply, onClear }: FilterModalProps) {
+  const insets = useSafeAreaInsets();
+  
   return (
     <ModalContainer
       visible={visible}
@@ -849,7 +854,7 @@ function FilterModal({ visible, onClose, filters, setFilters, onApply, onClear }
       </ScrollView>
 
       {/* Actions */}
-      <View style={styles.filterActions}>
+      <View style={[styles.filterActions, { paddingBottom: Math.max(insets.bottom, 16) + SPACING.md }]}>
         <Button
           title="ล้างตัวกรอง"
           onPress={onClear}

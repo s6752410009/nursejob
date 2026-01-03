@@ -1100,7 +1100,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 30,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
   },
 
   // Place Search

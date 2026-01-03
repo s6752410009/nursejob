@@ -11,10 +11,10 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
-  SafeAreaView,
   Linking,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -225,7 +225,7 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header with Back Button */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -383,12 +383,6 @@ export default function SettingsScreen() {
             title="ติดต่อเรา"
             subtitle="support@nursejob.th"
             onPress={() => Linking.openURL('mailto:support@nursejob.th')}
-            showArrow
-          />
-          <SettingRow
-            icon="star"
-            title="ให้คะแนนแอป"
-            onPress={() => Alert.alert('ขอบคุณ!', 'ขอบคุณที่สนับสนุนเรา')}
             showArrow
           />
         </View>

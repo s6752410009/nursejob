@@ -245,6 +245,17 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
 
             <Divider text="หรือ" />
 
+            {/* Phone Login Button */}
+            <TouchableOpacity
+              style={styles.phoneLoginButton}
+              onPress={() => navigation.navigate('PhoneLogin')}
+            >
+              <Text style={styles.phoneLoginIcon}>📱</Text>
+              <Text style={styles.phoneLoginText}>
+                เข้าสู่ระบบด้วยเบอร์โทร (OTP)
+              </Text>
+            </TouchableOpacity>
+
             {/* Google Sign-In Button */}
             <TouchableOpacity
               style={[
@@ -403,6 +414,29 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.md,
     fontWeight: '600',
     color: COLORS.text,
+  },
+
+  // Phone Login Button
+  phoneLoginButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E0F2FE',
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    marginBottom: SPACING.md,
+  },
+  phoneLoginIcon: {
+    fontSize: 20,
+    marginRight: SPACING.sm,
+  },
+  phoneLoginText: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
 
   // Footer

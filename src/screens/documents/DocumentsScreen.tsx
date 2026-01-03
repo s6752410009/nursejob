@@ -11,11 +11,12 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
-  SafeAreaView,
   Modal,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
@@ -45,6 +46,7 @@ const documentTypes: { type: DocumentType; icon: string }[] = [
 
 export default function DocumentsScreen() {
   const { user, requireAuth } = useAuth();
+  const navigation = useNavigation();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -188,7 +190,7 @@ export default function DocumentsScreen() {
   // Not logged in
   if (!user) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <EmptyState
           icon="documents-outline"
           title="เข้าสู่ระบบเพื่อจัดการเอกสาร"
@@ -244,8 +246,11 @@ export default function DocumentsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>เอกสารของฉัน</Text>
         <TouchableOpacity
           style={styles.addButton}
@@ -330,14 +335,18 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     padding: SPACING.lg,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    gap: SPACING.md,
+  },
+  backButton: {
+    padding: SPACING.xs,
   },
   headerTitle: {
+    flex: 1,
     fontSize: FONT_SIZES.xl,
     fontWeight: '700',
     color: COLORS.text,

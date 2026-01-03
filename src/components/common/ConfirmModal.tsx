@@ -150,7 +150,13 @@ export function SuccessModal({
         <View style={styles.container}>
           {/* Icon */}
           <View style={[styles.iconContainer, { backgroundColor: '#D1FAE5' }]}>
-            <Text style={styles.icon}>{icon}</Text>
+            {icon === '✅' ? (
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ color: '#FFF', fontSize: 24, fontWeight: 'bold' }}>✓</Text>
+              </View>
+            ) : (
+              <Text style={styles.icon}>{icon}</Text>
+            )}
           </View>
 
           {/* Title */}

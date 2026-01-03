@@ -11,13 +11,13 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
-  SafeAreaView,
   Modal,
   TextInput,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
@@ -209,7 +209,7 @@ export default function ReviewsScreen() {
 
   if (!hospitalId) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <EmptyState
           icon="alert-circle-outline"
           title="ไม่พบข้อมูลโรงพยาบาล"
@@ -294,7 +294,7 @@ export default function ReviewsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -393,39 +393,7 @@ export default function ReviewsScreen() {
                 <StarRating rating={newRating} size={32} onRate={setNewRating} editable={true} />
               </View>
 
-              {/* Title */}
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>หัวข้อ *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="เช่น ประสบการณ์ทำงานที่ดี"
-                  value={newTitle}
-                  onChangeText={setNewTitle}
-                  maxLength={100}
-                />
-              </View>
-
-              {/* Content */}
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>รายละเอียด *</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  placeholder="บอกเล่าประสบการณ์ของคุณ..."
-                  value={newContent}
-                  onChangeText={setNewContent}
-                  multiline={true}
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                  maxLength={1000}
-                />
-              </View>
-
-              {/* Pros */}
-              <View style={styles.formGroup}>
-                <Text style={styles.formLabel}>
-                  <Ionicons name="thumbs-up" size={14} color={COLORS.success} /> ข้อดี
-                </Text>
-                <TextInput
+              {/* Title */} <View style={styles.formGroup}> <Text style={styles.formLabel}>หัวข้อ *</Text> <TextInput style={styles.input} placeholder="เช่น ประสบการณ์ทำงานที่ดี" value={newTitle} onChangeText={setNewTitle} maxLength={100} /> </View> {/* Content */} <View style={styles.formGroup}> <Text style={styles.formLabel}>รายละเอียด *</Text> <TextInput style={[styles.input, styles.textArea]} placeholder="บอกเล่าประสบการณ์ของคุณ..." value={newContent} onChangeText={setNewContent} multiline={true} numberOfLines={4} textAlignVertical="top" maxLength={1000} /> </View> {/* Pros */} <View style={styles.formGroup}> <Text style={styles.formLabel}> <Ionicons name="thumbs-up" size={14} color={COLORS.success} /> ข้อดี </Text> <TextInput
                   style={styles.input}
                   placeholder="สิ่งที่ชอบ..."
                   value={newPros}

@@ -14,6 +14,7 @@ import {
   resetPassword,
   loginWithGoogle as loginWithGoogleService,
   loginAsAdmin as loginAsAdminService,
+  loginWithPhoneOTP,
   isAdminEmail,
   findEmailByUsername,
   validateAdminCredentials,
@@ -38,6 +39,7 @@ interface AuthContextType extends AuthState {
   login: (emailOrUsername: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   loginAsAdmin: (username: string, password: string) => Promise<void>;
+  loginWithPhone: (phone: string) => Promise<void>;
   register: (email: string, password: string, displayName: string, role?: 'user' | 'nurse' | 'hospital', username?: string, phone?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<UserProfile>) => Promise<void>;
@@ -255,6 +257,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  // Login with Phone (after OTP verification)
+  const loginWithPhone = async (phone: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const profile = await loginWithPhoneOTP(phone);
+      // Save to AsyncStorage first
+      await AsyncStorage.setItem('user', JSON.stringify(profile));
+      await AsyncStorage.setItem('isPhoneSession', 'true');
+      // Then update state - this will trigger re-render and navigation
+      setUser(profile);
+      setIsInitialized(true);
+      setShowLoginModal(false);
+      // Execute pending action after login
+      if (pendingAction) {
+        setTimeout(() => {
+          pendingAction();
+          setPendingAction(null);
+        }, 100);
+      }
+    } catch (err: any) {
+      // Use error message directly if it's in Thai
+      const isThai = /[\u0E00-\u0E7F]/.test(err.message || '');
+      const errorMessage = isThai ? err.message : getErrorMessage(err);
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Register
   const register = async (
     email: string, 
@@ -295,14 +328,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const logout = async () => {
     setIsLoading(true);
     try {
-      // Check if admin session (admin login doesn't use Firebase Auth)
+      // Check if admin session or phone session (these don't use Firebase Auth)
       const isAdminSession = await AsyncStorage.getItem('isAdminSession');
-      if (!isAdminSession) {
+      const isPhoneSession = await AsyncStorage.getItem('isPhoneSession');
+      if (!isAdminSession && !isPhoneSession) {
         await logoutUser();
       }
       // Clear AsyncStorage first
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('isAdminSession');
+      await AsyncStorage.removeItem('isPhoneSession');
       // Then update state
       setUser(null);
     } catch (err: any) {
@@ -311,6 +346,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(null);
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('isAdminSession');
+      await AsyncStorage.removeItem('isPhoneSession');
     } finally {
       setIsLoading(false);
     }
@@ -406,6 +442,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     login,
     loginWithGoogle,
     loginAsAdmin,
+    loginWithPhone,
     register,
     logout,
     updateUser,

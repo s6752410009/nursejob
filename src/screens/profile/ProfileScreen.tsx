@@ -14,7 +14,7 @@ import {
   RefreshControl,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
@@ -46,6 +46,7 @@ export default function ProfileScreen({ navigation }: Props) {
   // Auth context
   const { user, isAuthenticated, logout, updateUser, isLoading: isAuthLoading, isAdmin } = useAuth();
   const nav = useNavigation<any>();
+  const insets = useSafeAreaInsets();
 
   // State
   const [contacts, setContacts] = useState<ShiftContact[]>([]);
@@ -568,7 +569,7 @@ export default function ProfileScreen({ navigation }: Props) {
           </View>
         </ScrollView>
 
-        <View style={styles.editModalActions}>
+        <View style={[styles.editModalActions, { paddingBottom: Math.max(insets.bottom, 16) + SPACING.md }]}>
           <Button
             title="ยกเลิก"
             onPress={() => setShowEditModal(false)}

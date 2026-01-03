@@ -17,6 +17,9 @@ import {
   TextInputProps,
   Pressable,
   ImageStyle,
+  ScrollView,
+  Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
@@ -304,7 +307,7 @@ export function ModalContainer({
     <Modal
       visible={visible}
       transparent={fullScreen ? false : true}
-      animationType={fullScreen ? 'slide' : 'fade'}
+      animationType={fullScreen ? 'slide' : 'slide'}
       onRequestClose={onClose}
     >
       {fullScreen ? (
@@ -323,21 +326,31 @@ export function ModalContainer({
           <View style={styles.modalFullScreenContent}>{children}</View>
         </View>
       ) : (
-        <Pressable style={styles.modalOverlay} onPress={onClose}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            {title && (
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>{title}</Text>
-                {showCloseButton && (
-                  <TouchableOpacity onPress={onClose}>
-                    <Text style={styles.modalClose}>✕</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-            {children}
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <Pressable style={styles.modalOverlay} onPress={onClose}>
+            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+              {title && (
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>{title}</Text>
+                  {showCloseButton && (
+                    <TouchableOpacity onPress={onClose}>
+                      <Text style={styles.modalClose}>✕</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+              <ScrollView 
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {children}
+              </ScrollView>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       )}
     </Modal>
   );
@@ -672,17 +685,18 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: SPACING.lg,
+    justifyContent: 'flex-end',
+    padding: 0,
   },
   modalContent: {
     backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.xl,
+    borderTopLeftRadius: BORDER_RADIUS.xl,
+    borderTopRightRadius: BORDER_RADIUS.xl,
     width: '100%',
-    maxWidth: 400,
-    maxHeight: '80%',
-    padding: SPACING.lg,
+    maxHeight: '85%',
+    paddingTop: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: Platform.OS === 'android' ? SPACING.xl : SPACING.lg,
   },
   modalHeader: {
     flexDirection: 'row',

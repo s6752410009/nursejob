@@ -11,8 +11,8 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, SHADOWS, BORDER_RADIUS } from '../../theme';
@@ -95,7 +95,7 @@ export default function FavoritesScreen() {
   // Not logged in
   if (!user) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <EmptyState
           icon="🤍"
           title="เข้าสู่ระบบเพื่อดูรายการโปรด"
@@ -171,7 +171,7 @@ export default function FavoritesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 

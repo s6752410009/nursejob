@@ -8,6 +8,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text, View, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Context
 import { useAuth } from '../context/AuthContext';
@@ -20,6 +21,7 @@ import { RootStackParamList, AuthStackParamList, MainTabParamList } from '../typ
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import PhoneLoginScreen from '../screens/auth/PhoneLoginScreen';
 import EmailVerificationScreen from '../screens/auth/EmailVerificationScreen';
 import OTPVerificationScreen from '../screens/auth/OTPVerificationScreen';
 import CompleteRegistrationScreen from '../screens/auth/CompleteRegistrationScreen';
@@ -77,6 +79,7 @@ function AuthNavigator() {
       <AuthStack.Screen name="Login" component={LoginScreen} />
       <AuthStack.Screen name="Register" component={RegisterScreen} />
       <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <AuthStack.Screen name="PhoneLogin" component={PhoneLoginScreen} />
       <AuthStack.Screen name="EmailVerification" component={EmailVerificationScreen} />
       <AuthStack.Screen name="OTPVerification" component={OTPVerificationScreen} />
       <AuthStack.Screen name="CompleteRegistration" component={CompleteRegistrationScreen} />
@@ -125,12 +128,20 @@ function TabIcon({ focused, iconName, label, badgeCount }: TabIconProps) {
 // ============================================
 function MainTabNavigator() {
   const { unreadCount } = useChatNotification();
+  const insets = useSafeAreaInsets();
   
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: {
+          backgroundColor: COLORS.surface,
+          borderTopWidth: 1,
+          borderTopColor: COLORS.border,
+          height: 56 + insets.bottom,
+          paddingBottom: insets.bottom,
+          paddingTop: 4,
+        },
         tabBarShowLabel: false,
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textMuted,
@@ -408,18 +419,19 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    height: Platform.OS === 'android' ? 90 : 85,
-    paddingBottom: Platform.OS === 'android' ? 30 : 25,
-    paddingTop: 8,
+    height: Platform.OS === 'android' ? 56 : 85,
+    paddingBottom: Platform.OS === 'android' ? 4 : 25,
+    paddingTop: 4,
   },
   tabIconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingTop: 6,
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: COLORS.textMuted,
-    marginTop: 4,
+    marginTop: 2,
   },
   tabLabelActive: {
     color: COLORS.primary,

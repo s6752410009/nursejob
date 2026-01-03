@@ -253,6 +253,7 @@ export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
+  PhoneLogin: undefined;
   EmailVerification: { email: string };
   OTPVerification: { 
     phone: string; 

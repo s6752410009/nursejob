@@ -478,3 +478,90 @@ export async function refreshEmailVerificationStatus(): Promise<boolean> {
     return false;
   }
 }
+
+// ==========================================
+// Phone Login Functions (OTP-based)
+// ==========================================
+
+// Find user profile by phone number
+export async function findUserByPhone(phone: string): Promise<UserProfile | null> {
+  try {
+    const { collection, query, where, getDocs } = await import('firebase/firestore');
+    
+    // Clean phone number - remove all non-digits and normalize
+    let cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.startsWith('66')) {
+      cleanPhone = '0' + cleanPhone.substring(2);
+    }
+    
+    const usersRef = collection(db, USERS_COLLECTION);
+    
+    // Try to find with cleaned phone
+    const q = query(usersRef, where('phone', '==', cleanPhone));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const docData = querySnapshot.docs[0];
+      const data = docData.data();
+      return {
+        id: docData.id,
+        uid: docData.id,
+        ...data,
+        isAdmin: data.isAdmin || isAdminEmail(data.email || ''),
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate(),
+      } as UserProfile;
+    }
+    
+    // Also try with leading zero variations
+    const phoneVariations = [
+      cleanPhone,
+      cleanPhone.startsWith('0') ? cleanPhone.substring(1) : '0' + cleanPhone,
+    ];
+    
+    for (const phoneVar of phoneVariations) {
+      const qVar = query(usersRef, where('phone', '==', phoneVar));
+      const snapVar = await getDocs(qVar);
+      if (!snapVar.empty) {
+        const docData = snapVar.docs[0];
+        const data = docData.data();
+        return {
+          id: docData.id,
+          uid: docData.id,
+          ...data,
+          isAdmin: data.isAdmin || isAdminEmail(data.email || ''),
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate(),
+        } as UserProfile;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error finding user by phone:', error);
+    return null;
+  }
+}
+
+// Login with phone (after OTP verification) - returns user profile without Firebase Auth
+export async function loginWithPhoneOTP(phone: string): Promise<UserProfile> {
+  try {
+    const userProfile = await findUserByPhone(phone);
+    
+    if (!userProfile) {
+      throw new Error('ไม่พบบัญชีที่ลงทะเบียนด้วยเบอร์นี้\nกรุณาสมัครสมาชิกก่อน');
+    }
+    
+    // Update last login
+    await updateDoc(doc(db, USERS_COLLECTION, userProfile.uid), {
+      lastLoginAt: serverTimestamp(),
+      phoneVerified: true,
+    });
+    
+    return userProfile;
+  } catch (error: any) {
+    console.error('Error logging in with phone:', error);
+    throw error;
+  }
+}
+

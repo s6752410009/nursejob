@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   input: {
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.white,
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
     fontSize: FONT_SIZES.md,

@@ -25,6 +25,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, PROVINCES, DEPARTM
 import { useAuth } from '../../context/AuthContext';
 import { getJobs, searchJobs, subscribeToJobs } from '../../services/jobService';
 import { subscribeToNotifications } from '../../services/notificationsService';
+import { subscribeToFavorites, toggleFavorite, Favorite } from '../../services/favoritesService';
 import { JobPost, MainTabParamList, JobFilters } from '../../types';
 import { debounce } from '../../utils/helpers';
 
@@ -311,6 +312,7 @@ export default function HomeScreen({ navigation }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [filters, setFilters] = useState<JobFilters>({
     province: '',
     district: '',
@@ -362,41 +364,56 @@ export default function HomeScreen({ navigation }: Props) {
     return () => unsubscribe();
   }, [user?.uid]);
 
+  // Real-time favorites subscription
+  useEffect(() => {
+    if (!user?.uid) {
+      setFavoriteIds([]);
+      return;
+    }
+
+    const unsubscribe = subscribeToFavorites(user.uid, (favorites: Favorite[]) => {
+      setFavoriteIds(favorites.map(f => f.jobId));
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid]);
+
   // Real-time jobs subscription
   useEffect(() => {
+    setIsLoading(true);
+    
     // Subscribe to jobs updates
     const unsubscribe = subscribeToJobs((newJobs) => {
-      // Apply filters client-side
+      // ถ้าไม่มี filters ให้แสดงงานทั้งหมด
       let filteredJobs = newJobs.filter(job => job.status === 'active' || job.status === 'urgent');
       
-      if (filters.province) {
+      // Apply filters only if they have values
+      if (filters.province && filters.province.length > 0) {
         filteredJobs = filteredJobs.filter(job => job.location?.province === filters.province);
       }
-      if (filters.district) {
+      if (filters.district && filters.district.length > 0) {
         filteredJobs = filteredJobs.filter(job => job.location?.district === filters.district);
       }
-      if (filters.department) {
+      if (filters.department && filters.department.length > 0) {
         filteredJobs = filteredJobs.filter(job => job.department === filters.department);
       }
-      if (filters.urgentOnly) {
+      if (filters.urgentOnly === true) {
         filteredJobs = filteredJobs.filter(job => job.status === 'urgent');
       }
-      if (filters.minRate) {
+      if (filters.minRate && filters.minRate > 0) {
         filteredJobs = filteredJobs.filter(job => job.shiftRate >= filters.minRate!);
       }
-      if (filters.maxRate) {
+      if (filters.maxRate && filters.maxRate > 0) {
         filteredJobs = filteredJobs.filter(job => job.shiftRate <= filters.maxRate!);
       }
       
-      // Filter by shift time (morning/night)
+      // Filter by shift time (morning/night) - only if explicitly selected
       if (filters.sortBy === 'morning') {
-        // เวรเช้า: เริ่มงานก่อน 12:00
         filteredJobs = filteredJobs.filter(job => {
           const startHour = parseInt(job.shiftTime?.split(':')[0] || '8');
           return startHour >= 5 && startHour < 12;
         });
       } else if (filters.sortBy === 'night') {
-        // เวรดึก: เริ่มงานหลัง 18:00 หรือ มีคำว่า "ดึก"
         filteredJobs = filteredJobs.filter(job => {
           const startHour = parseInt(job.shiftTime?.split(':')[0] || '8');
           return startHour >= 18 || startHour < 5;
@@ -408,6 +425,7 @@ export default function HomeScreen({ navigation }: Props) {
         filteredJobs = filteredJobs.sort((a, b) => (b.shiftRate || 0) - (a.shiftRate || 0));
       }
       
+      console.log(`Jobs loaded: ${newJobs.length} total, ${filteredJobs.length} after filter`);
       setJobs(filteredJobs);
       setIsLoading(false);
     });
@@ -447,11 +465,21 @@ export default function HomeScreen({ navigation }: Props) {
     (navigation as any).navigate('JobDetail', { job });
   };
 
-  // Handle save job
-  const handleSaveJob = (job: JobPost) => {
-    requireAuth(() => {
-      // TODO: Implement save job functionality
-      Alert.alert('บันทึกแล้ว', `บันทึกงาน ${job.title} เรียบร้อยแล้ว`);
+  // Handle save job (toggle favorite)
+  const handleSaveJob = async (job: JobPost) => {
+    requireAuth(async () => {
+      if (!user?.uid) return;
+      
+      try {
+        const isNowFavorite = await toggleFavorite(user.uid, job.id);
+        if (isNowFavorite) {
+          Alert.alert('❤️ บันทึกแล้ว', `เพิ่ม "${job.title}" ไปยังรายการโปรดแล้ว`);
+        } else {
+          Alert.alert('💔 ลบออกแล้ว', `ลบ "${job.title}" ออกจากรายการโปรดแล้ว`);
+        }
+      } catch (error) {
+        Alert.alert('ข้อผิดพลาด', 'ไม่สามารถบันทึกงานได้');
+      }
     });
   };
 
@@ -491,7 +519,7 @@ export default function HomeScreen({ navigation }: Props) {
       job={item}
       onPress={() => handleJobPress(item)}
       onSave={() => handleSaveJob(item)}
-      isSaved={false} // TODO: Check if job is saved
+      isSaved={favoriteIds.includes(item.id)}
     />
   );
 

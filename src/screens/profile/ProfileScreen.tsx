@@ -18,12 +18,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { Button, Avatar, Card, Loading, ModalContainer, Input, Badge, Divider, ConfirmModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, POSITIONS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { getUserShiftContacts } from '../../services/jobService';
 import { getFavoritesCount } from '../../services/favoritesService';
 import { getUnreadNotificationsCount } from '../../services/notificationsService';
+import { getUserVerificationStatus, UserVerificationStatus } from '../../services/verificationService';
+import { uploadProfilePhoto } from '../../services/storageService';
 import { ShiftContact, MainTabParamList, RootStackParamList } from '../../types';
 import { formatDate, formatRelativeTime } from '../../utils/helpers';
 
@@ -52,6 +55,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [favoritesCount, setFavoritesCount] = useState(0);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [verificationStatus, setVerificationStatus] = useState<UserVerificationStatus | null>(null);
   const [editForm, setEditForm] = useState({
     displayName: '',
     phone: '',
@@ -78,14 +82,16 @@ export default function ProfileScreen({ navigation }: Props) {
     
     setIsLoading(true);
     try {
-      const [shiftsData, favCount, notifCount] = await Promise.all([
+      const [shiftsData, favCount, notifCount, verifyStatus] = await Promise.all([
         getUserShiftContacts(user.uid),
         getFavoritesCount(user.uid),
         getUnreadNotificationsCount(user.uid),
+        getUserVerificationStatus(user.uid),
       ]);
       setContacts(shiftsData);
       setFavoritesCount(favCount);
       setUnreadNotifications(notifCount);
+      setVerificationStatus(verifyStatus);
     } catch (error) {
       console.error('Error loading profile data:', error);
     } finally {
@@ -130,6 +136,8 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   // Handle photo change
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  
   const handleChangePhoto = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
@@ -145,9 +153,22 @@ export default function ProfileScreen({ navigation }: Props) {
       quality: 0.5,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      // TODO: Upload to Firebase Storage
-      Alert.alert('สำเร็จ', 'อัพโหลดรูปภาพเรียบร้อย (Demo)');
+    if (!result.canceled && result.assets[0] && user?.uid) {
+      setIsUploadingPhoto(true);
+      try {
+        // Upload to Firebase Storage
+        const photoURL = await uploadProfilePhoto(user.uid, result.assets[0].uri);
+        
+        // Update user profile with new photo URL
+        await updateUser({ photoURL });
+        
+        Alert.alert('สำเร็จ', 'อัพโหลดรูปโปรไฟล์เรียบร้อยแล้ว');
+      } catch (error: any) {
+        console.error('Upload photo error:', error);
+        Alert.alert('เกิดข้อผิดพลาด', error.message || 'ไม่สามารถอัพโหลดรูปได้');
+      } finally {
+        setIsUploadingPhoto(false);
+      }
     }
   };
 
@@ -233,14 +254,18 @@ export default function ProfileScreen({ navigation }: Props) {
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
-          <TouchableOpacity style={styles.avatarContainer} onPress={handleChangePhoto}>
+          <TouchableOpacity 
+            style={styles.avatarContainer} 
+            onPress={handleChangePhoto}
+            disabled={isUploadingPhoto}
+          >
             <Avatar 
               uri={user?.photoURL} 
               name={user?.displayName || 'User'} 
               size={100}
             />
             <View style={styles.editAvatarBadge}>
-              <Text style={styles.editAvatarIcon}>📷</Text>
+              <Text style={styles.editAvatarIcon}>{isUploadingPhoto ? '⏳' : '📷'}</Text>
             </View>
           </TouchableOpacity>
 
@@ -400,6 +425,26 @@ export default function ProfileScreen({ navigation }: Props) {
           >
             <Text style={styles.linkIcon}>📄</Text>
             <Text style={styles.linkText}>เอกสารของฉัน</Text>
+            <Text style={styles.linkArrow}>→</Text>
+          </TouchableOpacity>
+          <Divider />
+
+          {/* Verification Link */}
+          <TouchableOpacity 
+            style={styles.linkItem} 
+            onPress={() => nav.navigate('Verification')}
+          >
+            <Text style={styles.linkIcon}>✅</Text>
+            <Text style={styles.linkText}>ยืนยันตัวตนพยาบาล</Text>
+            {verificationStatus?.isVerified ? (
+              <View style={[styles.countBadge, { backgroundColor: '#4ADE80' }]}>
+                <Text style={styles.countText}>✓</Text>
+              </View>
+            ) : verificationStatus?.pendingRequest ? (
+              <View style={[styles.countBadge, { backgroundColor: '#FFA500' }]}>
+                <Text style={styles.countText}>รอ</Text>
+              </View>
+            ) : null}
             <Text style={styles.linkArrow}>→</Text>
           </TouchableOpacity>
           <Divider />

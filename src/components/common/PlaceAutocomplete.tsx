@@ -15,9 +15,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
+import { searchPlacesLongdo, PlaceResult } from '../../services/placesService';
 
-// ใช้ Nominatim API (OpenStreetMap) - ฟรี 100%
-const NOMINATIM_API = 'https://nominatim.openstreetmap.org/search';
+// ใช้ Longdo Map API (ของไทย) - ฟรี 100,000 requests/เดือน
+// Fallback: Local database + Nominatim (OpenStreetMap)
 
 // ====== LOCAL HOSPITAL DATABASE ======
 // Popular hospitals in Thailand for instant search
@@ -64,12 +65,18 @@ const LOCAL_HOSPITALS: Array<{ name: string; province: string; district: string 
   { name: 'โรงพยาบาลศูนย์การแพทย์นนทบุรี', province: 'นนทบุรี', district: 'เมืองนนทบุรี' },
   { name: 'โรงพยาบาลปากเกร็ด', province: 'นนทบุรี', district: 'ปากเกร็ด' },
   { name: 'โรงพยาบาลเจษฎา', province: 'นนทบุรี', district: 'บางใหญ่' },
+  { name: 'ศูนย์การแพทย์ปัญญานันทภิกขุ ชลประทาน', province: 'นนทบุรี', district: 'ปากเกร็ด' },
+  { name: 'โรงพยาบาลชลประทาน มศว', province: 'นนทบุรี', district: 'ปากเกร็ด' },
+  { name: 'โรงพยาบาลพระนั่งเกล้า', province: 'นนทบุรี', district: 'เมืองนนทบุรี' },
+  { name: 'โรงพยาบาลบางใหญ่', province: 'นนทบุรี', district: 'บางใหญ่' },
+  { name: 'โรงพยาบาลบางบัวทอง', province: 'นนทบุรี', district: 'บางบัวทอง' },
   { name: 'โรงพยาบาลธรรมศาสตร์เฉลิมพระเกียรติ', province: 'ปทุมธานี', district: 'คลองหลวง' },
   { name: 'โรงพยาบาลปทุมธานี', province: 'ปทุมธานี', district: 'เมืองปทุมธานี' },
   { name: 'โรงพยาบาลรังสิต', province: 'ปทุมธานี', district: 'ธัญบุรี' },
   { name: 'โรงพยาบาลสมุทรปราการ', province: 'สมุทรปราการ', district: 'เมืองสมุทรปราการ' },
   { name: 'โรงพยาบาลเมืองสมุทรปู่เจ้า', province: 'สมุทรปราการ', district: 'เมืองสมุทรปราการ' },
-  { name: 'โรงพยาบาลบางพลี', province: 'สมุทรปราการ', district: 'บางพลี' },
+  { name: 'โรงพยาบาลกรุงไทย แจ้งวัฒนะ', province: 'นนทบุรี', district: 'ปากเกร็ด' },
+  
   
   // ภาคกลาง
   { name: 'โรงพยาบาลพระนครศรีอยุธยา', province: 'พระนครศรีอยุธยา', district: 'พระนครศรีอยุธยา' },
@@ -166,7 +173,110 @@ const LOCAL_HOSPITALS: Array<{ name: string; province: string; district: string 
   { name: 'โรงพยาบาลชุมพรเขตรอุดมศักดิ์', province: 'ชุมพร', district: 'เมืองชุมพร' },
   { name: 'โรงพยาบาลระนอง', province: 'ระนอง', district: 'เมืองระนอง' },
   { name: 'โรงพยาบาลพังงา', province: 'พังงา', district: 'เมืองพังงา' },
+  
+  // ====== คลินิก - Clinics ======
+  // คลินิกความงาม/ผิวหนัง - กรุงเทพ
+  { name: 'คลินิกนิติพล', province: 'กรุงเทพมหานคร', district: 'พญาไท' },
+  { name: 'คลินิกธนพร', province: 'กรุงเทพมหานคร', district: 'ห้วยขวาง' },
+  { name: 'คลินิกพรเกษม', province: 'กรุงเทพมหานคร', district: 'บางแค' },
+  { name: 'SLC Clinic สยาม', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'Dermaster Clinic', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  { name: 'Pan Clinic', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  { name: 'Romrawin Clinic', province: 'กรุงเทพมหานคร', district: 'จตุจักร' },
+  { name: 'Siam Laser Clinic', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'KTOP Clinic', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'Apex Medical Center', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  { name: 'Rattinan Clinic', province: 'กรุงเทพมหานคร', district: 'พระโขนง' },
+  { name: 'Nida Skin Clinic', province: 'กรุงเทพมหานคร', district: 'ลาดพร้าว' },
+  { name: 'Pongsak Clinic', province: 'กรุงเทพมหานคร', district: 'บางกะปิ' },
+  { name: 'The Klinique', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'Gangnam Clinic', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  { name: 'Masterpiece Clinic', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  { name: 'Proud Clinic', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'Medisci Clinic', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  { name: 'Absolute Clinic', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  { name: 'Let Me In Clinic', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'Metro Beauty Centers', province: 'กรุงเทพมหานคร', district: 'บางนา' },
+  { name: 'Skinserity Clinic', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  { name: 'Blusky Clinic', province: 'กรุงเทพมหานคร', district: 'จตุจักร' },
+  { name: 'Lovely Eye Clinic', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'PSC Clinic', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  
+  // คลินิกเวชกรรมทั่วไป - กรุงเทพ
+  { name: 'คลินิกหมอครอบครัว', province: 'กรุงเทพมหานคร', district: 'บางกะปิ' },
+  { name: 'คลินิกแพทย์รวมใจ', province: 'กรุงเทพมหานคร', district: 'ห้วยขวาง' },
+  { name: 'คลินิกเซ็นทรัลเมดิคอล', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'คลินิกสุขภาพดี', province: 'กรุงเทพมหานคร', district: 'บางนา' },
+  { name: 'คลินิกหมอเมืองทอง', province: 'นนทบุรี', district: 'ปากเกร็ด' },
+  { name: 'คลินิกเวชกรรมบางแค', province: 'กรุงเทพมหานคร', district: 'บางแค' },
+  { name: 'คลินิกนายแพทย์สมชาย', province: 'กรุงเทพมหานคร', district: 'ดอนเมือง' },
+  
+  // คลินิกเฉพาะทาง
+  { name: 'คลินิกกระดูกและข้อ', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'คลินิกตา หู คอ จมูก', province: 'กรุงเทพมหานคร', district: 'ห้วยขวาง' },
+  { name: 'คลินิกเด็ก', province: 'กรุงเทพมหานคร', district: 'บางกะปิ' },
+  { name: 'คลินิกสูติ-นรีเวช', province: 'กรุงเทพมหานคร', district: 'ลาดพร้าว' },
+  { name: 'คลินิกหัวใจ', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  { name: 'คลินิกไต', province: 'กรุงเทพมหานคร', district: 'ห้วยขวาง' },
+  { name: 'คลินิกเบาหวาน', province: 'กรุงเทพมหานคร', district: 'ราชเทวี' },
+  { name: 'คลินิกโรคผิวหนัง', province: 'กรุงเทพมหานคร', district: 'พญาไท' },
+  
+  // ศูนย์ไตเทียม/ฟอกไต
+  { name: 'ศูนย์ไตเทียม ราชวิถี', province: 'กรุงเทพมหานคร', district: 'ราชเทวี' },
+  { name: 'ศูนย์ไตเทียม รามาธิบดี', province: 'กรุงเทพมหานคร', district: 'ราชเทวี' },
+  { name: 'ศูนย์ไตเทียม บางนา', province: 'กรุงเทพมหานคร', district: 'บางนา' },
+  { name: 'คลินิกฟอกไต เพรสซิเดนท์', province: 'กรุงเทพมหานคร', district: 'จตุจักร' },
+  { name: 'ศูนย์ไตเทียมธนบุรี', province: 'กรุงเทพมหานคร', district: 'ธนบุรี' },
+  
+  // คลินิกความงาม - ปริมณฑล
+  { name: 'Siam Clinic นนทบุรี', province: 'นนทบุรี', district: 'เมืองนนทบุรี' },
+  { name: 'คลินิกหมอกานต์ รังสิต', province: 'ปทุมธานี', district: 'ธัญบุรี' },
+  { name: 'Pan Clinic รังสิต', province: 'ปทุมธานี', district: 'ธัญบุรี' },
+  { name: 'SLC Clinic ฟิวเจอร์พาร์ค', province: 'ปทุมธานี', district: 'ธัญบุรี' },
+  { name: 'Dermaster ซีคอนบางแค', province: 'กรุงเทพมหานคร', district: 'บางแค' },
+  
+  // คลินิกความงาม - ต่างจังหวัด
+  { name: 'SLC Clinic เชียงใหม่', province: 'เชียงใหม่', district: 'เมืองเชียงใหม่' },
+  { name: 'Pan Clinic เชียงใหม่', province: 'เชียงใหม่', district: 'เมืองเชียงใหม่' },
+  { name: 'Nida Skin Clinic เชียงใหม่', province: 'เชียงใหม่', district: 'เมืองเชียงใหม่' },
+  { name: 'คลินิกนิติพล เชียงใหม่', province: 'เชียงใหม่', district: 'เมืองเชียงใหม่' },
+  { name: 'คลินิกความงาม ขอนแก่น', province: 'ขอนแก่น', district: 'เมืองขอนแก่น' },
+  { name: 'Dermaster ขอนแก่น', province: 'ขอนแก่น', district: 'เมืองขอนแก่น' },
+  { name: 'SLC Clinic ภูเก็ต', province: 'ภูเก็ต', district: 'เมืองภูเก็ต' },
+  { name: 'Pan Clinic พัทยา', province: 'ชลบุรี', district: 'บางละมุง' },
+  { name: 'คลินิกความงาม หาดใหญ่', province: 'สงขลา', district: 'หาดใหญ่' },
+  { name: 'Nida Skin หาดใหญ่', province: 'สงขลา', district: 'หาดใหญ่' },
+  { name: 'SLC Clinic นครราชสีมา', province: 'นครราชสีมา', district: 'เมืองนครราชสีมา' },
+  { name: 'คลินิกความงาม อุดรธานี', province: 'อุดรธานี', district: 'เมืองอุดรธานี' },
+  
+  // คลินิกศัลยกรรม
+  { name: 'Bangmod Aesthetic Center', province: 'กรุงเทพมหานคร', district: 'ทุ่งครุ' },
+  { name: 'Yoskarn Clinic', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'Bangkok Plastic Surgery', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  { name: 'DRK Beauty Clinic', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'Kamol Hospital', province: 'กรุงเทพมหานคร', district: 'ห้วยขวาง' },
+  { name: 'Lelux Hospital', province: 'กรุงเทพมหานคร', district: 'สวนหลวง' },
+  
+  // คลินิกทันตกรรม (พยาบาลทันตกรรม)
+  { name: 'คลินิกทันตกรรม BIDC', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  { name: 'DentAsia Clinic', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'คลินิกทันตกรรม พระราม 2', province: 'กรุงเทพมหานคร', district: 'บางขุนเทียน' },
+  { name: 'SmileDC Clinic', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  
+  // คลินิกกายภาพบำบัด
+  { name: 'คลินิกกายภาพบำบัด ฟิสิโอ', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  { name: 'PhysioTherapy Clinic', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'ศูนย์กายภาพบำบัด สมิติเวช', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
+  
+  // คลินิกเสริมความงาม หลายสาขา
+  { name: 'Medisci Clinic ราชประสงค์', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'Romrawin Clinic สยาม', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'Romrawin Clinic ลาดพร้าว', province: 'กรุงเทพมหานคร', district: 'ลาดพร้าว' },
+  { name: 'Romrawin Clinic เซ็นทรัลเวิลด์', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'Apex สาขาสยามพารากอน', province: 'กรุงเทพมหานคร', district: 'ปทุมวัน' },
+  { name: 'Apex สาขาเอ็มควอเทียร์', province: 'กรุงเทพมหานคร', district: 'วัฒนา' },
 ];
+
 
 // ====== FUZZY SEARCH FUNCTION ======
 function fuzzyMatch(text: string, query: string): boolean {
@@ -196,7 +306,8 @@ function searchLocalHospitals(query: string): Array<{ name: string; province: st
   ).slice(0, 8);
 }
 
-interface PlaceResult {
+// Re-export PlaceResult type for compatibility
+interface LocalPlaceResult {
   name: string;
   province: string;
   district: string;
@@ -205,31 +316,9 @@ interface PlaceResult {
   lng?: number;
 }
 
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  name?: string;
-  address?: {
-    amenity?: string;
-    hospital?: string;
-    clinic?: string;
-    building?: string;
-    road?: string;
-    suburb?: string;
-    city_district?: string;
-    city?: string;
-    state?: string;
-    province?: string;
-    county?: string;
-    postcode?: string;
-  };
-  lat: string;
-  lon: string;
-}
-
 interface PlaceAutocompleteProps {
   value: string;
-  onSelect: (place: PlaceResult) => void;
+  onSelect: (place: LocalPlaceResult) => void;
   placeholder?: string;
   label?: string;
   error?: string;
@@ -252,7 +341,7 @@ export function PlaceAutocomplete({
   error,
 }: PlaceAutocompleteProps) {
   const [query, setQuery] = useState(value);
-  const [results, setResults] = useState<PlaceResult[]>([]);
+  const [results, setResults] = useState<LocalPlaceResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -262,7 +351,7 @@ export function PlaceAutocomplete({
   }, [value]);
 
   // INSTANT search from local database (no debounce!)
-  const searchLocalInstant = (text: string): PlaceResult[] => {
+  const searchLocalInstant = (text: string): LocalPlaceResult[] => {
     const localResults = searchLocalHospitals(text);
     return localResults.map(h => ({
       name: h.name,
@@ -272,76 +361,31 @@ export function PlaceAutocomplete({
     }));
   };
 
-  // Search places using Nominatim (FREE) - with debounce
+  // Search places using Longdo API (Thai) - with debounce
   const searchOnlineDebounced = useCallback(
-    debounce(async (text: string, currentLocalResults: PlaceResult[]) => {
-      if (!text || text.length < 3) {
+    debounce(async (text: string, currentLocalResults: LocalPlaceResult[]) => {
+      if (!text || text.length < 2) {
         return;
       }
 
       try {
-        // Search in Thailand only
-        const params = new URLSearchParams({
-          q: text + ' hospital Thailand',
-          format: 'json',
-          addressdetails: '1',
-          limit: '5',
-          countrycodes: 'th',
-          'accept-language': 'th',
-        });
-
-        const response = await fetch(`${NOMINATIM_API}?${params}`, {
-          headers: {
-            'User-Agent': 'NurseShiftApp/1.0',
-          },
-        });
-
-        const data: NominatimResult[] = await response.json();
-
-        const onlinePlaces: PlaceResult[] = data.map((item) => {
-          const addr = item.address || {};
-          
-          // Extract name
-          let name = item.name || 
-                     addr.amenity || 
-                     addr.hospital || 
-                     addr.clinic || 
-                     addr.building ||
-                     item.display_name.split(',')[0];
-
-          // Extract province
-          let province = addr.state || addr.province || '';
-          province = province.replace('จังหวัด', '').trim();
-          if (province === 'กรุงเทพ' || province.includes('Bangkok')) {
-            province = 'กรุงเทพมหานคร';
-          }
-
-          // Extract district
-          let district = addr.city_district || addr.suburb || addr.county || addr.city || '';
-          district = district.replace(/^(เขต|อำเภอ|อ\.)/g, '').trim();
-
-          return {
-            name,
-            province,
-            district,
-            address: item.display_name,
-            lat: parseFloat(item.lat),
-            lng: parseFloat(item.lon),
-          };
-        });
-
+        // Search using Longdo API
+        const apiResults = await searchPlacesLongdo(text);
+        
         // Merge with local results, avoiding duplicates
         const existingNames = new Set(currentLocalResults.map(r => r.name.toLowerCase()));
-        const uniqueOnline = onlinePlaces.filter(p => !existingNames.has(p.name.toLowerCase()));
+        const uniqueOnline = apiResults.filter(p => !existingNames.has(p.name.toLowerCase()));
         
-        setResults([...currentLocalResults, ...uniqueOnline]);
-        setShowResults(true);
+        if (uniqueOnline.length > 0) {
+          setResults([...currentLocalResults, ...uniqueOnline]);
+          setShowResults(true);
+        }
       } catch (error) {
         console.error('Online search error:', error);
       } finally {
         setIsLoading(false);
       }
-    }, 300), // Reduced debounce to 300ms
+    }, 400),
     []
   );
 
@@ -367,7 +411,7 @@ export function PlaceAutocomplete({
     }
   };
 
-  const handleSelect = (place: PlaceResult) => {
+  const handleSelect = (place: LocalPlaceResult) => {
     setQuery(place.name);
     setShowResults(false);
     Keyboard.dismiss();
@@ -381,7 +425,7 @@ export function PlaceAutocomplete({
     onSelect({ name: '', province: '', district: '' });
   };
 
-  const renderResultItem = ({ item }: { item: PlaceResult }) => (
+  const renderResultItem = ({ item }: { item: LocalPlaceResult }) => (
     <TouchableOpacity
       style={styles.resultItem}
       onPress={() => handleSelect(item)}

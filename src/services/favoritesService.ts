@@ -91,6 +91,23 @@ export async function isFavorited(userId: string, jobId: string): Promise<boolea
   return favorite !== null;
 }
 
+// Toggle favorite (add or remove)
+export async function toggleFavorite(userId: string, jobId: string): Promise<boolean> {
+  try {
+    const isFav = await isFavorited(userId, jobId);
+    if (isFav) {
+      await removeFromFavorites(userId, jobId);
+      return false;
+    } else {
+      await addToFavorites(userId, jobId);
+      return true;
+    }
+  } catch (error) {
+    console.error('Error toggling favorite:', error);
+    throw error;
+  }
+}
+
 // Get all user favorites with job details
 export async function getUserFavorites(userId: string): Promise<Favorite[]> {
   try {

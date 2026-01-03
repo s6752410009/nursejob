@@ -414,6 +414,27 @@ export default function AdminDashboardScreen() {
           <Ionicons name="document-text" size={24} color={COLORS.success} />
           <Text style={styles.quickActionText}>จัดการประกาศ</Text>
         </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.quickActionButton} 
+          onPress={() => navigation.navigate('AdminVerification' as never)}
+        >
+          <Ionicons name="shield-checkmark" size={24} color={COLORS.info} />
+          <Text style={styles.quickActionText}>ตรวจใบอนุญาต</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.quickActionButton} 
+          onPress={() => navigation.navigate('AdminReports' as never)}
+        >
+          <Ionicons name="flag" size={24} color={COLORS.danger} />
+          <Text style={styles.quickActionText}>ดูรายงาน</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.quickActionButton} 
+          onPress={() => navigation.navigate('AdminFeedback' as never)}
+        >
+          <Ionicons name="chatbox-ellipses" size={24} color="#8B5CF6" />
+          <Text style={styles.quickActionText}>Feedback</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.quickActionButton} onPress={onRefresh}>
           <Ionicons name="refresh" size={24} color={COLORS.warning} />
           <Text style={styles.quickActionText}>รีเฟรช</Text>

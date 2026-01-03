@@ -112,7 +112,20 @@ export function JobCard({
           size={50}
         />
         <View style={styles.headerInfo}>
-          <Text style={styles.posterName} numberOfLines={1}>{job.posterName}</Text>
+          <View style={styles.nameRow}>
+            <Text style={[
+              styles.posterName,
+              job.posterVerified && styles.posterNameVerified
+            ]} numberOfLines={1}>
+              {job.posterName}
+            </Text>
+            {job.posterVerified && (
+              <View style={styles.verifiedBadge}>
+                <Ionicons name="checkmark-circle" size={14} color="#3B82F6" />
+                <Text style={styles.verifiedText}>พยาบาล</Text>
+              </View>
+            )}
+          </View>
           <View style={styles.locationRow}>
             <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} style={styles.locationIcon} />
             <Text style={styles.location} numberOfLines={1}>
@@ -210,10 +223,35 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: SPACING.sm,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   posterName: {
     fontSize: FONT_SIZES.sm,
     fontWeight: '600',
     color: COLORS.text,
+    maxWidth: '60%',
+  },
+  posterNameVerified: {
+    color: '#3B82F6',
+    fontWeight: '700',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: 4,
+    gap: 2,
+  },
+  verifiedText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#3B82F6',
   },
   locationRow: {
     flexDirection: 'row',

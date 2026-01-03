@@ -1,0 +1,261 @@
+// ============================================
+// VERIFICATION SERVICE - ตรวจสอบใบประกอบวิชาชีพ
+// ============================================
+
+import { db } from '../config/firebase';
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  updateDoc, 
+  query, 
+  where, 
+  getDocs,
+  orderBy,
+  serverTimestamp,
+  Timestamp,
+  addDoc
+} from 'firebase/firestore';
+
+const VERIFICATIONS_COLLECTION = 'verifications';
+const USERS_COLLECTION = 'users';
+
+// ============================================
+// Types
+// ============================================
+
+export interface VerificationRequest {
+  id?: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userPhone?: string;
+  
+  // License info
+  licenseNumber: string;
+  licenseType: 'nurse' | 'practical_nurse' | 'midwife' | 'other';
+  licenseExpiry: Date;
+  
+  // Documents
+  licenseDocumentUrl: string;
+  idCardUrl?: string;
+  selfieUrl?: string;
+  
+  // Status
+  status: 'pending' | 'approved' | 'rejected';
+  rejectionReason?: string;
+  
+  // Timestamps
+  submittedAt: Date;
+  reviewedAt?: Date;
+  reviewedBy?: string;
+}
+
+export interface UserVerificationStatus {
+  isVerified: boolean;
+  verifiedAt?: Date;
+  licenseNumber?: string;
+  licenseType?: string;
+  licenseExpiry?: Date;
+  pendingRequest?: boolean;
+}
+
+// ============================================
+// License Type Labels
+// ============================================
+
+export const LICENSE_TYPES = [
+  { value: 'nurse', label: 'พยาบาลวิชาชีพ (RN)' },
+  { value: 'practical_nurse', label: 'พยาบาลเทคนิค (PN)' },
+  { value: 'midwife', label: 'พยาบาลผดุงครรภ์' },
+  { value: 'other', label: 'อื่นๆ' },
+];
+
+export function getLicenseTypeLabel(type: string): string {
+  const found = LICENSE_TYPES.find(t => t.value === type);
+  return found?.label || type;
+}
+
+// ============================================
+// Submit Verification Request
+// ============================================
+
+export async function submitVerificationRequest(
+  request: Omit<VerificationRequest, 'id' | 'status' | 'submittedAt'>
+): Promise<string> {
+  try {
+    // Check if user already has pending request
+    const existingRequest = await getPendingVerificationRequest(request.userId);
+    if (existingRequest) {
+      throw new Error('คุณมีคำขอที่รอการตรวจสอบอยู่แล้ว');
+    }
+    
+    // Check if user is already verified
+    const status = await getUserVerificationStatus(request.userId);
+    if (status.isVerified) {
+      throw new Error('บัญชีของคุณได้รับการยืนยันแล้ว');
+    }
+    
+    const docRef = await addDoc(collection(db, VERIFICATIONS_COLLECTION), {
+      ...request,
+      status: 'pending',
+      submittedAt: serverTimestamp(),
+    });
+    
+    return docRef.id;
+  } catch (error: any) {
+    console.error('Error submitting verification request:', error);
+    throw new Error(error.message || 'ไม่สามารถส่งคำขอยืนยันตัวตนได้');
+  }
+}
+
+// ============================================
+// Get User's Pending Request
+// ============================================
+
+export async function getPendingVerificationRequest(
+  userId: string
+): Promise<VerificationRequest | null> {
+  try {
+    const q = query(
+      collection(db, VERIFICATIONS_COLLECTION),
+      where('userId', '==', userId),
+      where('status', '==', 'pending')
+    );
+    
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return null;
+    
+    const doc = snapshot.docs[0];
+    const data = doc.data();
+    return {
+      id: doc.id,
+      ...data,
+      submittedAt: data.submittedAt?.toDate() || new Date(),
+      licenseExpiry: data.licenseExpiry?.toDate() || new Date(),
+    } as VerificationRequest;
+  } catch (error) {
+    console.error('Error getting pending verification:', error);
+    return null;
+  }
+}
+
+// ============================================
+// Get User Verification Status
+// ============================================
+
+export async function getUserVerificationStatus(
+  userId: string
+): Promise<UserVerificationStatus> {
+  try {
+    const userDoc = await getDoc(doc(db, USERS_COLLECTION, userId));
+    
+    if (!userDoc.exists()) {
+      return { isVerified: false };
+    }
+    
+    const userData = userDoc.data();
+    const pendingRequest = await getPendingVerificationRequest(userId);
+    
+    return {
+      isVerified: userData.isVerified || false,
+      verifiedAt: userData.verifiedAt?.toDate(),
+      licenseNumber: userData.licenseNumber,
+      licenseType: userData.licenseType,
+      licenseExpiry: userData.licenseExpiry?.toDate(),
+      pendingRequest: Boolean(pendingRequest),
+    };
+  } catch (error) {
+    console.error('Error getting verification status:', error);
+    return { isVerified: false };
+  }
+}
+
+// ============================================
+// Admin Functions - Approve/Reject
+// ============================================
+
+export async function approveVerificationRequest(
+  requestId: string,
+  adminId: string
+): Promise<void> {
+  try {
+    const requestRef = doc(db, VERIFICATIONS_COLLECTION, requestId);
+    const requestDoc = await getDoc(requestRef);
+    
+    if (!requestDoc.exists()) {
+      throw new Error('ไม่พบคำขอนี้');
+    }
+    
+    const requestData = requestDoc.data();
+    
+    // Update verification request
+    await updateDoc(requestRef, {
+      status: 'approved',
+      reviewedAt: serverTimestamp(),
+      reviewedBy: adminId,
+    });
+    
+    // Update user profile
+    const userRef = doc(db, USERS_COLLECTION, requestData.userId);
+    await updateDoc(userRef, {
+      isVerified: true,
+      verifiedAt: serverTimestamp(),
+      licenseNumber: requestData.licenseNumber,
+      licenseType: requestData.licenseType,
+      licenseExpiry: requestData.licenseExpiry,
+    });
+  } catch (error) {
+    console.error('Error approving verification:', error);
+    throw new Error('ไม่สามารถอนุมัติคำขอได้');
+  }
+}
+
+export async function rejectVerificationRequest(
+  requestId: string,
+  adminId: string,
+  reason: string
+): Promise<void> {
+  try {
+    const requestRef = doc(db, VERIFICATIONS_COLLECTION, requestId);
+    
+    await updateDoc(requestRef, {
+      status: 'rejected',
+      rejectionReason: reason,
+      reviewedAt: serverTimestamp(),
+      reviewedBy: adminId,
+    });
+  } catch (error) {
+    console.error('Error rejecting verification:', error);
+    throw new Error('ไม่สามารถปฏิเสธคำขอได้');
+  }
+}
+
+// ============================================
+// Get All Pending Requests (Admin)
+// ============================================
+
+export async function getAllPendingVerifications(): Promise<VerificationRequest[]> {
+  try {
+    const q = query(
+      collection(db, VERIFICATIONS_COLLECTION),
+      where('status', '==', 'pending')
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        submittedAt: data.submittedAt?.toDate() || new Date(),
+        licenseExpiry: data.licenseExpiry?.toDate() || new Date(),
+      } as VerificationRequest;
+    });
+  } catch (error) {
+    console.error('Error getting pending verifications:', error);
+    return [];
+  }
+}

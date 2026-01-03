@@ -2,7 +2,7 @@
 // SHIFT DETAIL SCREEN - รายละเอียดงาน
 // ============================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,10 +19,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { Button, Avatar, Badge, Card, ModalContainer, BackButton, ConfirmModal, SuccessModal, ErrorModal } from '../../components/common';
+import ReportModal from '../../components/report/ReportModal';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
-import { contactForShift, deleteJob, updateJob } from '../../services/jobService';
-import { getOrCreateConversation, reportJob } from '../../services/chatService';
+import { contactForShift, deleteJob, updateJob, incrementViewCount } from '../../services/jobService';
+import { getOrCreateConversation } from '../../services/chatService';
 import { JobPost, RootStackParamList } from '../../types';
 import { formatDate, formatRelativeTime, callPhone, openLine, openMapsDirections } from '../../utils/helpers';
 
@@ -86,14 +87,19 @@ export default function JobDetailScreen({ navigation, route }: Props) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isStartingChat, setIsStartingChat] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
-  const [reportReason, setReportReason] = useState('');
-  const [isReporting, setIsReporting] = useState(false);
 
   // Check if user is logged in
   const isLoggedIn = isAuthenticated && user;
   
   // Check if user is the owner of this job
   const isOwner = user && (user.uid === job.posterId || user.id === job.posterId);
+
+  // Increment view count when screen loads
+  useEffect(() => {
+    if (job?.id && !isOwner) {
+      incrementViewCount(job.id);
+    }
+  }, [job?.id, isOwner]);
 
   // Handle contact poster
   const handleContact = () => {
@@ -245,23 +251,6 @@ export default function JobDetailScreen({ navigation, route }: Props) {
     requireAuth(() => {
       setShowReportModal(true);
     });
-  };
-
-  const submitReport = async () => {
-    if (!user || !reportReason.trim()) return;
-    
-    setIsReporting(true);
-    try {
-      await reportJob(job.id, user.uid, user.displayName || 'ผู้ใช้', reportReason.trim());
-      setShowReportModal(false);
-      setReportReason('');
-      Alert.alert('รายงานแล้ว', 'ขอบคุณสำหรับการรายงาน ทีมงานจะตรวจสอบโดยเร็ว');
-    } catch (error: any) {
-      setErrorMessage(error.message || 'ไม่สามารถรายงานได้ กรุณาลองใหม่');
-      setShowErrorModal(true);
-    } finally {
-      setIsReporting(false);
-    }
   };
 
   // Handle delete job (for owner only)
@@ -635,54 +624,19 @@ export default function JobDetailScreen({ navigation, route }: Props) {
       />
 
       {/* Report Modal */}
-      <ModalContainer visible={showReportModal} onClose={() => setShowReportModal(false)}>
-        <View style={styles.reportModalContent}>
-          <View style={styles.reportHeader}>
-            <Ionicons name="flag" size={32} color={COLORS.warning} />
-            <Text style={styles.reportTitle}>รายงานประกาศ</Text>
-          </View>
-          <Text style={styles.reportSubtitle}>กรุณาระบุเหตุผลในการรายงาน</Text>
-          
-          <View style={styles.reportReasons}>
-            {['ข้อมูลเท็จ', 'หลอกลวง', 'เนื้อหาไม่เหมาะสม', 'อื่นๆ'].map((reason) => (
-              <TouchableOpacity
-                key={reason}
-                style={[
-                  styles.reportReasonButton,
-                  reportReason === reason && styles.reportReasonButtonActive
-                ]}
-                onPress={() => setReportReason(reason)}
-              >
-                <Text style={[
-                  styles.reportReasonText,
-                  reportReason === reason && styles.reportReasonTextActive
-                ]}>
-                  {reason}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.reportButtons}>
-            <Button
-              title="ยกเลิก"
-              variant="outline"
-              onPress={() => {
-                setShowReportModal(false);
-                setReportReason('');
-              }}
-              style={{ flex: 1, marginRight: SPACING.sm }}
-            />
-            <Button
-              title={isReporting ? "กำลังส่ง..." : "ส่งรายงาน"}
-              variant="primary"
-              onPress={submitReport}
-              disabled={!reportReason || isReporting}
-              style={{ flex: 1 }}
-            />
-          </View>
-        </View>
-      </ModalContainer>
+      {user && (
+        <ReportModal
+          visible={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          targetType="job"
+          targetId={job.id}
+          targetName={job.title}
+          targetDescription={job.description}
+          reporterId={user.uid}
+          reporterName={user.displayName || 'ผู้ใช้'}
+          reporterEmail={user.email || ''}
+        />
+      )}
     </SafeAreaView>
   );
 }

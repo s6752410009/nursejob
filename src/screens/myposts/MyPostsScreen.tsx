@@ -349,7 +349,10 @@ export default function MyPostsScreen() {
         <Text style={styles.headerTitle}>ประกาศของฉัน</Text>
         <TouchableOpacity 
           style={styles.addButton}
-          onPress={() => (navigation as any).navigate('PostJob')}
+          onPress={() => {
+            // Navigate to PostJob tab in Main navigator
+            (navigation as any).getParent()?.navigate('Main', { screen: 'PostJob' });
+          }}
         >
           <Ionicons name="add" size={24} color={COLORS.primary} />
         </TouchableOpacity>

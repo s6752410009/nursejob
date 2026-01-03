@@ -816,3 +816,4 @@ export { default as ConfirmModal, SuccessModal, ErrorModal } from './ConfirmModa
 export { default as TermsConsentModal } from './TermsConsentModal';
 export { default as BackButton } from './BackButton';
 export { PlaceAutocomplete, QuickPlacePicker } from './PlaceAutocomplete';
+export { default as CalendarPicker } from './CalendarPicker';

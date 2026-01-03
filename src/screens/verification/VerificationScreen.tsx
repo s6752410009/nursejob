@@ -1,0 +1,733 @@
+// ============================================
+// VERIFICATION SCREEN - ยืนยันตัวตนพยาบาล
+// ============================================
+
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme';
+import { Button, Card, Input, ModalContainer } from '../../components/common';
+import { useAuth } from '../../context/AuthContext';
+import { 
+  pickImage, 
+  takePhoto, 
+  pickDocument,
+  uploadLicenseDocument,
+  uploadIdCard,
+  uploadProfilePhoto,
+} from '../../services/storageService';
+import {
+  submitVerificationRequest,
+  getUserVerificationStatus,
+  getPendingVerificationRequest,
+  LICENSE_TYPES,
+  UserVerificationStatus,
+  VerificationRequest,
+} from '../../services/verificationService';
+import { CalendarPicker } from '../../components/common';
+
+interface Props {
+  navigation: any;
+}
+
+export default function VerificationScreen({ navigation }: Props) {
+  const { user } = useAuth();
+  
+  // State
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<UserVerificationStatus | null>(null);
+  const [pendingRequest, setPendingRequest] = useState<VerificationRequest | null>(null);
+  
+  // Form state
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [licenseType, setLicenseType] = useState<string>('nurse');
+  const [licenseExpiry, setLicenseExpiry] = useState(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000));
+  const [licenseDocUri, setLicenseDocUri] = useState<string | null>(null);
+  const [idCardUri, setIdCardUri] = useState<string | null>(null);
+  const [selfieUri, setSelfieUri] = useState<string | null>(null);
+  
+  // Modals
+  const [showLicenseTypeModal, setShowLicenseTypeModal] = useState(false);
+  const [showImagePickerModal, setShowImagePickerModal] = useState(false);
+  const [currentImageType, setCurrentImageType] = useState<'license' | 'idcard' | 'selfie'>('license');
+
+  useEffect(() => {
+    loadVerificationStatus();
+  }, [user?.uid]);
+
+  const loadVerificationStatus = async () => {
+    if (!user?.uid) return;
+    
+    setIsLoading(true);
+    try {
+      const status = await getUserVerificationStatus(user.uid);
+      setVerificationStatus(status);
+      
+      if (status.pendingRequest) {
+        const pending = await getPendingVerificationRequest(user.uid);
+        setPendingRequest(pending);
+      }
+    } catch (error) {
+      console.error('Error loading verification status:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePickImage = async (type: 'license' | 'idcard' | 'selfie') => {
+    setCurrentImageType(type);
+    setShowImagePickerModal(true);
+  };
+
+  const selectFromGallery = async () => {
+    setShowImagePickerModal(false);
+    try {
+      const uri = await pickImage();
+      if (uri) {
+        switch (currentImageType) {
+          case 'license':
+            setLicenseDocUri(uri);
+            break;
+          case 'idcard':
+            setIdCardUri(uri);
+            break;
+          case 'selfie':
+            setSelfieUri(uri);
+            break;
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('ข้อผิดพลาด', error.message);
+    }
+  };
+
+  const takePhotoCamera = async () => {
+    setShowImagePickerModal(false);
+    try {
+      const uri = await takePhoto();
+      if (uri) {
+        switch (currentImageType) {
+          case 'license':
+            setLicenseDocUri(uri);
+            break;
+          case 'idcard':
+            setIdCardUri(uri);
+            break;
+          case 'selfie':
+            setSelfieUri(uri);
+            break;
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('ข้อผิดพลาด', error.message);
+    }
+  };
+
+  const handlePickDocument = async () => {
+    try {
+      const doc = await pickDocument();
+      if (doc) {
+        setLicenseDocUri(doc.uri);
+      }
+    } catch (error: any) {
+      Alert.alert('ข้อผิดพลาด', error.message);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!user) return;
+    
+    // Validation
+    if (!licenseNumber.trim()) {
+      Alert.alert('ข้อผิดพลาด', 'กรุณากรอกเลขที่ใบอนุญาต');
+      return;
+    }
+    if (!licenseDocUri) {
+      Alert.alert('ข้อผิดพลาด', 'กรุณาอัพโหลดรูปใบประกอบวิชาชีพ');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      // Upload documents
+      const licenseUrl = await uploadLicenseDocument(user.uid, licenseDocUri, 'license.jpg');
+      
+      let idCardUrl: string | undefined;
+      if (idCardUri) {
+        idCardUrl = await uploadIdCard(user.uid, idCardUri);
+      }
+      
+      let selfieUrl: string | undefined;
+      if (selfieUri) {
+        selfieUrl = await uploadProfilePhoto(user.uid, selfieUri);
+      }
+      
+      // Submit request
+      await submitVerificationRequest({
+        userId: user.uid,
+        userName: user.displayName || 'ไม่ระบุชื่อ',
+        userEmail: user.email || '',
+        userPhone: user.phone,
+        licenseNumber: licenseNumber.trim(),
+        licenseType: licenseType as any,
+        licenseExpiry,
+        licenseDocumentUrl: licenseUrl,
+        idCardUrl,
+        selfieUrl,
+      });
+      
+      Alert.alert(
+        '✅ ส่งคำขอสำเร็จ',
+        'คำขอยืนยันตัวตนของคุณถูกส่งแล้ว ทีมงานจะตรวจสอบภายใน 1-3 วันทำการ',
+        [{ text: 'ตกลง', onPress: () => navigation.goBack() }]
+      );
+    } catch (error: any) {
+      Alert.alert('ข้อผิดพลาด', error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>กำลังโหลด...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Already verified
+  if (verificationStatus?.isVerified) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>ยืนยันตัวตน</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        
+        <View style={styles.verifiedContainer}>
+          <View style={styles.verifiedBadge}>
+            <Ionicons name="checkmark-circle" size={80} color="#4ADE80" />
+          </View>
+          <Text style={styles.verifiedTitle}>ยืนยันตัวตนแล้ว ✓</Text>
+          <Text style={styles.verifiedSubtitle}>
+            บัญชีของคุณได้รับการยืนยันเป็นพยาบาลวิชาชีพแล้ว
+          </Text>
+          
+          <Card style={styles.licenseCard}>
+            <View style={styles.licenseRow}>
+              <Text style={styles.licenseLabel}>ประเภท:</Text>
+              <Text style={styles.licenseValue}>
+                {LICENSE_TYPES.find(t => t.value === verificationStatus.licenseType)?.label || verificationStatus.licenseType}
+              </Text>
+            </View>
+            <View style={styles.licenseRow}>
+              <Text style={styles.licenseLabel}>เลขที่ใบอนุญาต:</Text>
+              <Text style={styles.licenseValue}>{verificationStatus.licenseNumber}</Text>
+            </View>
+            {verificationStatus.licenseExpiry && (
+              <View style={styles.licenseRow}>
+                <Text style={styles.licenseLabel}>วันหมดอายุ:</Text>
+                <Text style={styles.licenseValue}>
+                  {verificationStatus.licenseExpiry.toLocaleDateString('th-TH')}
+                </Text>
+              </View>
+            )}
+          </Card>
+          
+          <Button
+            title="กลับ"
+            onPress={() => navigation.goBack()}
+            variant="outline"
+            style={{ marginTop: SPACING.lg }}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Pending request
+  if (pendingRequest) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>ยืนยันตัวตน</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        
+        <View style={styles.pendingContainer}>
+          <View style={styles.pendingBadge}>
+            <Ionicons name="time-outline" size={80} color={COLORS.warning} />
+          </View>
+          <Text style={styles.pendingTitle}>รอการตรวจสอบ</Text>
+          <Text style={styles.pendingSubtitle}>
+            คำขอยืนยันตัวตนของคุณอยู่ระหว่างการตรวจสอบ{'\n'}
+            โดยปกติจะใช้เวลา 1-3 วันทำการ
+          </Text>
+          
+          <Card style={styles.pendingCard}>
+            <Text style={styles.pendingCardTitle}>รายละเอียดคำขอ</Text>
+            <View style={styles.licenseRow}>
+              <Text style={styles.licenseLabel}>เลขที่ใบอนุญาต:</Text>
+              <Text style={styles.licenseValue}>{pendingRequest.licenseNumber}</Text>
+            </View>
+            <View style={styles.licenseRow}>
+              <Text style={styles.licenseLabel}>ส่งเมื่อ:</Text>
+              <Text style={styles.licenseValue}>
+                {pendingRequest.submittedAt.toLocaleDateString('th-TH')}
+              </Text>
+            </View>
+          </Card>
+          
+          <Button
+            title="กลับ"
+            onPress={() => navigation.goBack()}
+            variant="outline"
+            style={{ marginTop: SPACING.lg }}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show form
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>ยืนยันตัวตน</Text>
+        <View style={{ width: 24 }} />
+      </View>
+      
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Info Banner */}
+        <Card style={styles.infoBanner}>
+          <View style={styles.infoBannerContent}>
+            <Ionicons name="shield-checkmark" size={40} color={COLORS.primary} />
+            <View style={styles.infoBannerText}>
+              <Text style={styles.infoBannerTitle}>ยืนยันตัวตนเพื่อเพิ่มความน่าเชื่อถือ</Text>
+              <Text style={styles.infoBannerSubtitle}>
+                โปรไฟล์ที่ได้รับการยืนยันจะแสดง ✓ หลังชื่อ{'\n'}
+                ทำให้ผู้ว่าจ้างมั่นใจมากขึ้น
+              </Text>
+            </View>
+          </View>
+        </Card>
+
+        {/* License Number */}
+        <Card style={styles.section}>
+          <Text style={styles.sectionTitle}>ข้อมูลใบอนุญาต</Text>
+          
+          <Input
+            label="เลขที่ใบประกอบวิชาชีพ *"
+            placeholder="เช่น ก.12345"
+            value={licenseNumber}
+            onChangeText={setLicenseNumber}
+          />
+          
+          {/* License Type */}
+          <Text style={styles.inputLabel}>ประเภทใบอนุญาต *</Text>
+          <TouchableOpacity
+            style={styles.selectButton}
+            onPress={() => setShowLicenseTypeModal(true)}
+          >
+            <Text style={styles.selectButtonText}>
+              {LICENSE_TYPES.find(t => t.value === licenseType)?.label || 'เลือกประเภท'}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color={COLORS.textMuted} />
+          </TouchableOpacity>
+          
+          {/* License Expiry */}
+          <CalendarPicker
+            label="วันหมดอายุใบอนุญาต *"
+            value={licenseExpiry}
+            onChange={setLicenseExpiry}
+            minDate={new Date()}
+          />
+        </Card>
+
+        {/* Document Upload */}
+        <Card style={styles.section}>
+          <Text style={styles.sectionTitle}>อัพโหลดเอกสาร</Text>
+          
+          {/* License Document */}
+          <Text style={styles.inputLabel}>รูปใบประกอบวิชาชีพ *</Text>
+          <TouchableOpacity
+            style={styles.uploadButton}
+            onPress={() => handlePickImage('license')}
+          >
+            {licenseDocUri ? (
+              <Image source={{ uri: licenseDocUri }} style={styles.uploadPreview} />
+            ) : (
+              <View style={styles.uploadPlaceholder}>
+                <Ionicons name="document-outline" size={40} color={COLORS.textMuted} />
+                <Text style={styles.uploadText}>แตะเพื่ออัพโหลด</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          
+          {/* ID Card (optional) */}
+          <Text style={styles.inputLabel}>รูปบัตรประชาชน (ไม่บังคับ)</Text>
+          <TouchableOpacity
+            style={styles.uploadButton}
+            onPress={() => handlePickImage('idcard')}
+          >
+            {idCardUri ? (
+              <Image source={{ uri: idCardUri }} style={styles.uploadPreview} />
+            ) : (
+              <View style={styles.uploadPlaceholder}>
+                <Ionicons name="card-outline" size={40} color={COLORS.textMuted} />
+                <Text style={styles.uploadText}>แตะเพื่ออัพโหลด</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          
+          {/* Selfie (optional) */}
+          <Text style={styles.inputLabel}>รูปถ่ายหน้าตรง (ไม่บังคับ)</Text>
+          <TouchableOpacity
+            style={styles.uploadButton}
+            onPress={() => handlePickImage('selfie')}
+          >
+            {selfieUri ? (
+              <Image source={{ uri: selfieUri }} style={styles.uploadPreview} />
+            ) : (
+              <View style={styles.uploadPlaceholder}>
+                <Ionicons name="person-circle-outline" size={40} color={COLORS.textMuted} />
+                <Text style={styles.uploadText}>แตะเพื่ออัพโหลด</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </Card>
+
+        {/* Privacy Notice */}
+        <Card style={[styles.section, styles.privacyCard]}>
+          <View style={styles.privacyContent}>
+            <Ionicons name="lock-closed-outline" size={24} color={COLORS.primary} />
+            <Text style={styles.privacyText}>
+              ข้อมูลและเอกสารของคุณจะถูกเก็บรักษาอย่างปลอดภัย{'\n'}
+              และใช้เพื่อการตรวจสอบเท่านั้น
+            </Text>
+          </View>
+        </Card>
+
+        {/* Submit Button */}
+        <Button
+          title={isSubmitting ? 'กำลังส่ง...' : 'ส่งคำขอยืนยัน'}
+          onPress={handleSubmit}
+          isLoading={isSubmitting}
+          style={{ marginVertical: SPACING.lg }}
+        />
+      </ScrollView>
+
+      {/* License Type Modal */}
+      <ModalContainer
+        visible={showLicenseTypeModal}
+        onClose={() => setShowLicenseTypeModal(false)}
+        title="เลือกประเภทใบอนุญาต"
+      >
+        {LICENSE_TYPES.map((type) => (
+          <TouchableOpacity
+            key={type.value}
+            style={styles.modalItem}
+            onPress={() => {
+              setLicenseType(type.value);
+              setShowLicenseTypeModal(false);
+            }}
+          >
+            <Text style={[
+              styles.modalItemText,
+              licenseType === type.value && styles.modalItemTextSelected
+            ]}>
+              {type.label}
+            </Text>
+            {licenseType === type.value && (
+              <Ionicons name="checkmark" size={20} color={COLORS.primary} />
+            )}
+          </TouchableOpacity>
+        ))}
+      </ModalContainer>
+
+      {/* Image Picker Modal */}
+      <ModalContainer
+        visible={showImagePickerModal}
+        onClose={() => setShowImagePickerModal(false)}
+        title="เลือกรูปภาพ"
+      >
+        <TouchableOpacity style={styles.modalItem} onPress={selectFromGallery}>
+          <Ionicons name="images-outline" size={24} color={COLORS.primary} />
+          <Text style={styles.modalItemText}>เลือกจากคลังรูปภาพ</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.modalItem} onPress={takePhotoCamera}>
+          <Ionicons name="camera-outline" size={24} color={COLORS.primary} />
+          <Text style={styles.modalItemText}>ถ่ายรูป</Text>
+        </TouchableOpacity>
+        {currentImageType === 'license' && (
+          <TouchableOpacity style={styles.modalItem} onPress={handlePickDocument}>
+            <Ionicons name="document-outline" size={24} color={COLORS.primary} />
+            <Text style={styles.modalItemText}>เลือกไฟล์ PDF</Text>
+          </TouchableOpacity>
+        )}
+      </ModalContainer>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  headerTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  content: {
+    flex: 1,
+    padding: SPACING.md,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: SPACING.md,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
+  },
+  
+  // Info Banner
+  infoBanner: {
+    backgroundColor: COLORS.primaryLight,
+    marginBottom: SPACING.md,
+  },
+  infoBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  infoBannerText: {
+    flex: 1,
+  },
+  infoBannerTitle: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginBottom: 4,
+  },
+  infoBannerSubtitle: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  
+  // Section
+  section: {
+    marginBottom: SPACING.md,
+  },
+  sectionTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.md,
+  },
+  inputLabel: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '500',
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.xs,
+    marginTop: SPACING.sm,
+  },
+  selectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.lg,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  selectButtonText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textPrimary,
+  },
+  
+  // Upload
+  uploadButton: {
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderStyle: 'dashed',
+    borderRadius: BORDER_RADIUS.lg,
+    overflow: 'hidden',
+    marginBottom: SPACING.md,
+  },
+  uploadPlaceholder: {
+    paddingVertical: SPACING.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.background,
+  },
+  uploadText: {
+    marginTop: SPACING.sm,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textMuted,
+  },
+  uploadPreview: {
+    width: '100%',
+    height: 200,
+    resizeMode: 'cover',
+  },
+  
+  // Privacy
+  privacyCard: {
+    backgroundColor: COLORS.background,
+  },
+  privacyContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+  },
+  privacyText: {
+    flex: 1,
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    lineHeight: 20,
+  },
+  
+  // Verified State
+  verifiedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.lg,
+  },
+  verifiedBadge: {
+    marginBottom: SPACING.lg,
+  },
+  verifiedTitle: {
+    fontSize: FONT_SIZES.xl,
+    fontWeight: '700',
+    color: '#4ADE80',
+    marginBottom: SPACING.sm,
+  },
+  verifiedSubtitle: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SPACING.lg,
+  },
+  licenseCard: {
+    width: '100%',
+    backgroundColor: COLORS.surface,
+  },
+  licenseRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  licenseLabel: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+  },
+  licenseValue: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  
+  // Pending State
+  pendingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING.lg,
+  },
+  pendingBadge: {
+    marginBottom: SPACING.lg,
+  },
+  pendingTitle: {
+    fontSize: FONT_SIZES.xl,
+    fontWeight: '700',
+    color: COLORS.warning,
+    marginBottom: SPACING.sm,
+  },
+  pendingSubtitle: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SPACING.lg,
+    lineHeight: 24,
+  },
+  pendingCard: {
+    width: '100%',
+    backgroundColor: COLORS.surface,
+  },
+  pendingCardTitle: {
+    fontSize: FONT_SIZES.md,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: SPACING.sm,
+    paddingBottom: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  
+  // Modal
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    gap: SPACING.md,
+  },
+  modalItemText: {
+    flex: 1,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textPrimary,
+  },
+  modalItemTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+});

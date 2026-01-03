@@ -42,9 +42,16 @@ import ReviewsScreen from '../screens/reviews/ReviewsScreen';
 import HelpScreen from '../screens/help/HelpScreen';
 import TermsScreen from '../screens/legal/TermsScreen';
 import PrivacyScreen from '../screens/legal/PrivacyScreen';
+import VerificationScreen from '../screens/verification/VerificationScreen';
 
 // Admin Screens
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import AdminVerificationScreen from '../screens/admin/AdminVerificationScreen';
+import AdminReportsScreen from '../screens/admin/AdminReportsScreen';
+import AdminFeedbackScreen from '../screens/admin/AdminFeedbackScreen';
+
+// Feature Screens
+import FeedbackScreen from '../screens/feedback/FeedbackScreen';
 
 // Theme
 import { COLORS, SPACING, FONT_SIZES } from '../theme';
@@ -221,6 +228,15 @@ function RootNavigator() {
         }}
       />
 
+      {/* Verification - ยืนยันตัวตน */}
+      <RootStack.Screen 
+        name="Verification" 
+        component={VerificationScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+
       {/* Notifications */}
       <RootStack.Screen 
         name="Notifications" 
@@ -297,6 +313,42 @@ function RootNavigator() {
       <RootStack.Screen 
         name="AdminDashboard" 
         component={AdminDashboardScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+
+      {/* Admin Verification (Admin only) */}
+      <RootStack.Screen 
+        name="AdminVerification" 
+        component={AdminVerificationScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+
+      {/* Admin Reports (Admin only) */}
+      <RootStack.Screen 
+        name="AdminReports" 
+        component={AdminReportsScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+
+      {/* Admin Feedback (Admin only) */}
+      <RootStack.Screen 
+        name="AdminFeedback" 
+        component={AdminFeedbackScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+
+      {/* User Feedback */}
+      <RootStack.Screen 
+        name="Feedback" 
+        component={FeedbackScreen}
         options={{
           animation: 'slide_from_right',
         }}

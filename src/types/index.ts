@@ -108,6 +108,7 @@ export interface JobPost {
   status: 'active' | 'closed' | 'urgent';
   viewsCount?: number;
   tags?: string[];
+  posterVerified?: boolean; // ผู้โพสต์ได้รับการยืนยันตัวตนแล้ว
 }
 
 // การติดต่อแสดงความสนใจ
@@ -240,7 +241,12 @@ export type RootStackParamList = {
   Help: undefined;
   Terms: undefined;
   Privacy: undefined;
+  Verification: undefined; // ยืนยันตัวตนพยาบาล
   AdminDashboard: undefined; // Admin Dashboard Screen
+  AdminVerification: undefined; // Admin Verification Screen - ตรวจใบอนุญาต
+  AdminReports: undefined; // Admin Reports Screen - ดูรายงาน
+  AdminFeedback: undefined; // Admin Feedback Screen - ดู feedback
+  Feedback: undefined; // User Feedback Screen
 };
 
 export type AuthStackParamList = {

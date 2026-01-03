@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { Button, Input, Card, Chip, ModalContainer, PlaceAutocomplete, QuickPlacePicker } from '../../components/common';
+import { Button, Input, Card, Chip, ModalContainer, PlaceAutocomplete, QuickPlacePicker, CalendarPicker } from '../../components/common';
 import CustomAlert, { AlertState, initialAlertState, createAlert } from '../../components/common/CustomAlert';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, DEPARTMENTS, PROVINCES, DISTRICTS_BY_PROVINCE } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
@@ -303,6 +303,7 @@ export default function PostJobScreen({ navigation, route }: Props) {
           posterId: user.uid,
           posterName: user.displayName || 'ไม่ระบุชื่อ',
           posterPhoto: user.photoURL || '',
+          posterVerified: user.isVerified || false, // เพิ่ม verified status
         });
 
         // Increment post count for free users
@@ -426,49 +427,14 @@ export default function PostJobScreen({ navigation, route }: Props) {
         <Card style={styles.section}>
           <Text style={styles.sectionTitle}>วันเวลา</Text>
           
-          {/* Date Picker */}
-          <Text style={styles.inputLabel}>วันที่ต้องการ *</Text>
-          <TouchableOpacity
-            style={[styles.selectButton, errors.shiftDate && styles.selectButtonError]}
-            onPress={() => setShowDateModal(true)}
-          >
-            <Ionicons name="calendar-outline" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
-            <Text style={[styles.selectButtonText, { flex: 1 }]}>
-              {formatDate(form.shiftDate)}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color={COLORS.textMuted} />
-          </TouchableOpacity>
-          {errors.shiftDate && <Text style={styles.errorText}>{errors.shiftDate}</Text>}
-
-          {/* Quick Date Buttons */}
-          <View style={styles.quickDateRow}>
-            <TouchableOpacity
-              style={styles.quickDateButton}
-              onPress={() => setForm({ ...form, shiftDate: new Date() })}
-            >
-              <Text style={styles.quickDateText}>วันนี้</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickDateButton}
-              onPress={() => {
-                const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                setForm({ ...form, shiftDate: tomorrow });
-              }}
-            >
-              <Text style={styles.quickDateText}>พรุ่งนี้</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickDateButton}
-              onPress={() => {
-                const nextWeek = new Date();
-                nextWeek.setDate(nextWeek.getDate() + 7);
-                setForm({ ...form, shiftDate: nextWeek });
-              }}
-            >
-              <Text style={styles.quickDateText}>+7 วัน</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Date Picker - Using CalendarPicker */}
+          <CalendarPicker
+            label="วันที่ต้องการ *"
+            value={form.shiftDate}
+            onChange={(date) => setForm({ ...form, shiftDate: date })}
+            error={errors.shiftDate}
+            minDate={new Date()}
+          />
 
           {/* Time Pickers */}
           <Text style={styles.inputLabel}>ช่วงเวลา *</Text>
@@ -796,40 +762,6 @@ export default function PostJobScreen({ navigation, route }: Props) {
               )}
             </TouchableOpacity>
           ))}
-        </ScrollView>
-      </ModalContainer>
-
-      {/* Date Picker Modal */}
-      <ModalContainer
-        visible={showDateModal}
-        onClose={() => setShowDateModal(false)}
-        title="เลือกวันที่"
-      >
-        <ScrollView style={styles.modalList}>
-          {generateDateOptions().map((date, index) => {
-            const isSelected = form.shiftDate.toDateString() === date.toDateString();
-            const dayLabel = index === 0 ? ' (วันนี้)' : index === 1 ? ' (พรุ่งนี้)' : '';
-            return (
-              <TouchableOpacity
-                key={index}
-                style={styles.modalItem}
-                onPress={() => {
-                  setForm({ ...form, shiftDate: date });
-                  setShowDateModal(false);
-                }}
-              >
-                <Text style={[
-                  styles.modalItemText,
-                  isSelected && styles.modalItemTextSelected
-                ]}>
-                  {formatDate(date)}{dayLabel}
-                </Text>
-                {isSelected && (
-                  <Text style={styles.modalItemCheck}>✓</Text>
-                )}
-              </TouchableOpacity>
-            );
-          })}
         </ScrollView>
       </ModalContainer>
 

@@ -12,7 +12,8 @@ import {
   limit,
   serverTimestamp,
   Timestamp,
-  onSnapshot
+  onSnapshot,
+  increment,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { JobPost, ShiftContact, JobFilters } from '../types';
@@ -46,6 +47,7 @@ export function subscribeToJobs(callback: (jobs: JobPost[]) => void): () => void
         posterName: data.posterName || 'ไม่ระบุชื่อ',
         posterId: data.posterId || '',
         posterPhoto: data.posterPhoto,
+        posterVerified: data.posterVerified || false,
         department: data.department || 'ทั่วไป',
         shiftRate: data.shiftRate || 1500,
         rateType: data.rateType || 'shift',
@@ -74,9 +76,20 @@ export function subscribeToJobs(callback: (jobs: JobPost[]) => void): () => void
       return true;
     });
     
+    console.log(`[subscribeToJobs] Got ${jobs.length} jobs from Firebase`);
+    
+    // If no jobs found, return mock data for demo
+    if (jobs.length === 0) {
+      console.log('[subscribeToJobs] No jobs, returning mock data');
+      callback(getMockJobs());
+      return;
+    }
+    
     callback(jobs);
   }, (error) => {
     console.error('Error subscribing to jobs:', error);
+    // Return mock data on error
+    callback(getMockJobs());
   });
 }
 
@@ -263,6 +276,19 @@ export async function updateJob(jobId: string, updates: Partial<JobPost>): Promi
   }
 }
 
+// Increment view count when someone views a job
+export async function incrementViewCount(jobId: string): Promise<void> {
+  try {
+    const docRef = doc(db, JOBS_COLLECTION, jobId);
+    await updateDoc(docRef, {
+      viewsCount: increment(1),
+    });
+  } catch (error) {
+    console.error('Error incrementing view count:', error);
+    // Don't throw - this is not critical
+  }
+}
+
 // Delete job
 export async function deleteJob(jobId: string): Promise<void> {
   try {
@@ -318,10 +344,10 @@ export async function getUserPosts(userId: string): Promise<JobPost[]> {
 
 // Subscribe to user's posts in real-time
 export function subscribeToUserPosts(userId: string, callback: (posts: JobPost[]) => void): () => void {
+  // Use simple query without orderBy to avoid composite index requirement
   const postsQuery = query(
     collection(db, JOBS_COLLECTION),
-    where('posterId', '==', userId),
-    orderBy('createdAt', 'desc')
+    where('posterId', '==', userId)
   );
 
   return onSnapshot(postsQuery, (snapshot) => {
@@ -351,9 +377,14 @@ export function subscribeToUserPosts(userId: string, callback: (posts: JobPost[]
         viewsCount: data.viewsCount || 0,
       } as JobPost;
     });
+    
+    // Sort by createdAt descending in client-side
+    posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
     callback(posts);
   }, (error) => {
     console.error('Error subscribing to user posts:', error);
+    callback([]); // Return empty array on error
   });
 }
 

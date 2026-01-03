@@ -372,6 +372,13 @@ export default function SettingsScreen() {
             showArrow
           />
           <SettingRow
+            icon="chatbox-ellipses"
+            title="ส่ง Feedback / รีวิว"
+            subtitle="บอกเราว่าคุณคิดอย่างไร"
+            onPress={() => (navigation as any).navigate('Feedback')}
+            showArrow
+          />
+          <SettingRow
             icon="mail"
             title="ติดต่อเรา"
             subtitle="support@nursejob.th"

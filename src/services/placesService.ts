@@ -1,14 +1,28 @@
 // ============================================
-// GOOGLE PLACES SERVICE - Place Autocomplete
+// PLACES SERVICE - Longdo Map API (Thai)
 // ============================================
+// Free tier: 100,000 requests/month
+// ลงทะเบียนขอ API Key ที่: https://map.longdo.com/console
 
 // ⚠️ สำคัญ: ใส่ API Key ของคุณที่นี่
-// ไปที่ https://console.cloud.google.com/
-// 1. สร้าง Project ใหม่หรือเลือก Project
-// 2. เปิดใช้งาน "Places API" และ "Maps JavaScript API"
-// 3. สร้าง API Key ที่ Credentials
-// 4. จำกัด Key ให้ใช้เฉพาะ Places API และ domain ของคุณ
-const GOOGLE_PLACES_API_KEY = 'YOUR_GOOGLE_PLACES_API_KEY';
+// 1. ไปที่ https://map.longdo.com/console
+// 2. ลงทะเบียน/เข้าสู่ระบบ
+// 3. สร้าง API Key ใหม่
+// 4. copy key มาใส่ที่นี่
+const LONGDO_API_KEY = '42cbc4a02c0bc712bafa5e0b44ae2cd7';
+
+const LONGDO_SEARCH_API = 'https://search.longdo.com/mapsearch/json/search';
+const LONGDO_SUGGEST_API = 'https://search.longdo.com/mapsearch/json/suggest';
+
+export interface PlaceResult {
+  name: string;
+  province: string;
+  district: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  type?: string;
+}
 
 export interface PlacePrediction {
   place_id: string;
@@ -36,93 +50,179 @@ export interface PlaceDetails {
   }[];
 }
 
-// Get place predictions (autocomplete)
-export async function getPlacePredictions(
-  input: string,
-  types: string = 'establishment' // establishment, hospital, health
-): Promise<PlacePrediction[]> {
-  if (!input || input.length < 2) return [];
+// ============================================
+// Longdo Map API - Search Places
+// ============================================
+interface LongdoSearchResult {
+  name: string;
+  address?: string;
+  lat: number;
+  lon: number;
+  type?: string;
+  subtype?: string;
+  prov?: string;
+  apts?: string; // district/amphoe
+  tumb?: string; // tambon
+  road?: string;
+  postcode?: string;
+}
+
+export async function searchPlacesLongdo(query: string): Promise<PlaceResult[]> {
+  if (!query || query.length < 2) return [];
   
+  // Check if API key is configured
+  if (LONGDO_API_KEY === 'YOUR_LONGDO_API_KEY') {
+    console.log('Longdo API Key not configured. Using local database.');
+    return [];
+  }
+
   try {
-    // Use CORS proxy for web or direct API for native
-    const baseUrl = 'https://maps.googleapis.com/maps/api/place/autocomplete/json';
+    // ค้นหาโดยไม่จำกัด tag เพื่อให้ได้ผลลัพธ์มากขึ้น
     const params = new URLSearchParams({
-      input,
-      key: GOOGLE_PLACES_API_KEY,
-      language: 'th',
-      components: 'country:th', // Thailand only
-      types, // Filter by type
+      keyword: query,
+      key: LONGDO_API_KEY,
+      limit: '15',
+      // locale: 'th', // ภาษาไทย
     });
 
-    // For web, we need to use a proxy or backend
-    // Option 1: Use your own backend proxy
-    // Option 2: Use a CORS proxy (not recommended for production)
-    // Option 3: Use Places Autocomplete Widget (recommended for web)
+    const response = await fetch(`${LONGDO_SEARCH_API}?${params}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
     
-    const response = await fetch(`${baseUrl}?${params}`);
     const data = await response.json();
     
-    if (data.status === 'OK') {
-      return data.predictions;
-    } else if (data.status === 'ZERO_RESULTS') {
-      return [];
-    } else {
-      console.error('Places API error:', data.status);
+    console.log('Longdo API response:', JSON.stringify(data, null, 2));
+
+    if (!data.data || !Array.isArray(data.data)) {
       return [];
     }
+
+    return data.data.map((item: LongdoSearchResult) => {
+      // Extract province and district from various fields
+      let province = item.prov || '';
+      let district = item.apts || item.tumb || '';
+      
+      // ถ้าไม่มี province/district ลองดึงจาก address
+      if ((!province || !district) && item.address) {
+        const addressParts = item.address.split(' ');
+        // หา pattern เช่น "อ.บางบัวทอง จ.นนทบุรี"
+        for (const part of addressParts) {
+          if (part.startsWith('จ.') || part.startsWith('จังหวัด')) {
+            province = province || part.replace(/^(จ\.|จังหวัด)/, '').trim();
+          }
+          if (part.startsWith('อ.') || part.startsWith('อำเภอ') || part.startsWith('เขต')) {
+            district = district || part.replace(/^(อ\.|อำเภอ|เขต)/, '').trim();
+          }
+        }
+      }
+      
+      return {
+        name: item.name,
+        province: cleanProvinceName(province),
+        district: cleanDistrictName(district),
+        address: item.address || `${item.road || ''} ${district} ${province}`.trim(),
+        lat: item.lat,
+        lng: item.lon,
+        type: item.type || item.subtype,
+      };
+    });
   } catch (error) {
-    console.error('Error fetching place predictions:', error);
+    console.error('Longdo search error:', error);
     return [];
   }
 }
 
-// Get place details by place_id
-export async function getPlaceDetails(placeId: string): Promise<PlaceDetails | null> {
-  if (!placeId) return null;
+// ============================================
+// Longdo Map API - Autocomplete Suggest
+// ============================================
+export async function suggestPlacesLongdo(query: string): Promise<string[]> {
+  if (!query || query.length < 2) return [];
   
+  if (LONGDO_API_KEY === 'YOUR_LONGDO_API_KEY') {
+    return [];
+  }
+
   try {
-    const baseUrl = 'https://maps.googleapis.com/maps/api/place/details/json';
     const params = new URLSearchParams({
-      place_id: placeId,
-      key: GOOGLE_PLACES_API_KEY,
-      language: 'th',
-      fields: 'place_id,name,formatted_address,geometry,address_components',
+      keyword: query,
+      key: LONGDO_API_KEY,
+      limit: '8',
     });
 
-    const response = await fetch(`${baseUrl}?${params}`);
+    const response = await fetch(`${LONGDO_SUGGEST_API}?${params}`);
     const data = await response.json();
-    
-    if (data.status === 'OK') {
-      return data.result;
+
+    if (!data.data || !Array.isArray(data.data)) {
+      return [];
     }
-    return null;
+
+    return data.data.map((item: any) => item.w || item.keyword || '');
   } catch (error) {
-    console.error('Error fetching place details:', error);
-    return null;
+    console.error('Longdo suggest error:', error);
+    return [];
   }
+}
+
+// ============================================
+// Helper Functions  
+// ============================================
+function cleanProvinceName(province: string): string {
+  return province
+    .replace(/^จังหวัด/g, '')
+    .replace(/^จ\./g, '')
+    .trim();
+}
+
+function cleanDistrictName(district: string): string {
+  return district
+    .replace(/^เขต/g, '')
+    .replace(/^อำเภอ/g, '')
+    .replace(/^อ\./g, '')
+    .trim();
+}
+
+// Legacy Google Places functions (keep for compatibility)
+export async function getPlacePredictions(
+  input: string,
+  types: string = 'establishment'
+): Promise<PlacePrediction[]> {
+  // Use Longdo search instead
+  const results = await searchPlacesLongdo(input);
+  return results.map((r, index) => ({
+    place_id: `longdo_${index}`,
+    description: `${r.name}, ${r.district} ${r.province}`.trim(),
+    structured_formatting: {
+      main_text: r.name,
+      secondary_text: `${r.district} ${r.province}`.trim(),
+    },
+  }));
+}
+
+export async function getPlaceDetails(placeId: string): Promise<PlaceDetails | null> {
+  // Not needed with Longdo - data comes with search
+  return null;
 }
 
 // Extract province from address components
 export function extractProvince(addressComponents: PlaceDetails['address_components']): string {
   if (!addressComponents) return '';
-  
   const province = addressComponents.find(
     (comp) => comp.types.includes('administrative_area_level_1')
   );
-  
   return province?.long_name || '';
 }
 
 // Extract district from address components
 export function extractDistrict(addressComponents: PlaceDetails['address_components']): string {
   if (!addressComponents) return '';
-  
   const district = addressComponents.find(
     (comp) => comp.types.includes('administrative_area_level_2') ||
               comp.types.includes('sublocality_level_1') ||
               comp.types.includes('locality')
   );
-  
   return district?.long_name || '';
 }
 

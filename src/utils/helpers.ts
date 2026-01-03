@@ -38,8 +38,32 @@ export const formatTime = (date: Date | string): string => {
 };
 
 // Format relative time (Thai)
-export const formatRelativeTime = (date: Date | string): string => {
-  const d = typeof date === 'string' ? new Date(date) : date;
+export const formatRelativeTime = (date: Date | string | any): string => {
+  if (!date) return 'ไม่ระบุ';
+  
+  let d: Date;
+  
+  // Handle Firestore Timestamp
+  if (date?.toDate && typeof date.toDate === 'function') {
+    d = date.toDate();
+  } else if (date instanceof Date) {
+    d = date;
+  } else if (typeof date === 'string') {
+    d = new Date(date);
+  } else if (typeof date === 'number') {
+    d = new Date(date);
+  } else if (date?.seconds) {
+    // Firestore Timestamp object
+    d = new Date(date.seconds * 1000);
+  } else {
+    return 'ไม่ระบุ';
+  }
+  
+  // Check if valid date
+  if (isNaN(d.getTime())) {
+    return 'ไม่ระบุ';
+  }
+  
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffMins = Math.floor(diffMs / 60000);

@@ -813,7 +813,7 @@ export default function PostJobScreen({ navigation, route }: Props) {
           <View style={styles.upgradeHeader}>
             <Text style={styles.upgradeEmoji}>👑</Text>
             <Text style={styles.upgradeTitle}>Premium Plan</Text>
-            <Text style={styles.upgradePrice}>฿199<Text style={styles.upgradePriceUnit}>/เดือน</Text></Text>
+            <Text style={styles.upgradePrice}>฿89<Text style={styles.upgradePriceUnit}>/เดือน</Text></Text>
           </View>
 
           <View style={styles.upgradeBenefits}>
@@ -823,7 +823,7 @@ export default function PostJobScreen({ navigation, route }: Props) {
             </View>
             <View style={styles.upgradeBenefit}>
               <Ionicons name="checkmark-circle" size={20} color="#4ADE80" />
-              <Text style={styles.upgradeBenefitText}>โพสต์แสดงผล 30 วัน (แทน 2 วัน)</Text>
+              <Text style={styles.upgradeBenefitText}>โพสต์แสดงผล 30 วัน (แทน 3 วัน)</Text>
             </View>
             <View style={styles.upgradeBenefit}>
               <Ionicons name="checkmark-circle" size={20} color="#4ADE80" />
@@ -838,12 +838,19 @@ export default function PostJobScreen({ navigation, route }: Props) {
           <View style={styles.upgradeCompare}>
             <View style={styles.upgradeCompareRow}>
               <Text style={styles.upgradeCompareLabel}>แพ็กเกจฟรี</Text>
-              <Text style={styles.upgradeCompareValue}>2 โพสต์/วัน, อยู่ 2 วัน</Text>
+              <Text style={styles.upgradeCompareValue}>2 โพสต์/วัน, อยู่ 3 วัน</Text>
             </View>
             <View style={styles.upgradeCompareRow}>
               <Text style={[styles.upgradeCompareLabel, { color: '#FFD700' }]}>Premium</Text>
               <Text style={[styles.upgradeCompareValue, { color: '#4ADE80' }]}>ไม่จำกัด, อยู่ 30 วัน</Text>
             </View>
+          </View>
+
+          <View style={styles.upgradeExtraOptions}>
+            <Text style={styles.upgradeExtraTitle}>💡 หรือซื้อแยก:</Text>
+            <Text style={styles.upgradeExtraItem}>• โพสต์เพิ่ม 1 โพสต์ = ฿19</Text>
+            <Text style={styles.upgradeExtraItem}>• ต่ออายุโพสต์ 1 วัน = ฿19</Text>
+            <Text style={styles.upgradeExtraItem}>• ปุ่มต้องการด่วน = ฿49</Text>
           </View>
 
           <TouchableOpacity
@@ -857,7 +864,7 @@ export default function PostJobScreen({ navigation, route }: Props) {
             }}
           >
             <Ionicons name="card" size={20} color="#FFF" />
-            <Text style={styles.upgradeActionButtonText}>อัพเกรดตอนนี้ ฿199</Text>
+            <Text style={styles.upgradeActionButtonText}>อัพเกรดตอนนี้ ฿89</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -1330,7 +1337,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
   },
   upgradeCompareRow: {
     flexDirection: 'row',
@@ -1344,6 +1351,24 @@ const styles = StyleSheet.create({
   upgradeCompareValue: {
     fontSize: FONT_SIZES.sm,
     color: COLORS.text,
+  },
+  upgradeExtraOptions: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  upgradeExtraTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  upgradeExtraItem: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.textSecondary,
+    marginLeft: SPACING.xs,
+    lineHeight: 22,
   },
   upgradeActionButton: {
     flexDirection: 'row',

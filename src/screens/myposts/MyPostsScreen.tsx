@@ -20,6 +20,7 @@ import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme
 import { useAuth } from '../../context/AuthContext';
 import { Loading, EmptyState, Button, Avatar } from '../../components/common';
 import { getUserPosts, updateJobStatus, deleteJob, subscribeToUserPosts } from '../../services/jobService';
+import { canUseFreeUrgent, markFreeUrgentUsed } from '../../services/subscriptionService';
 import { JobPost } from '../../types';
 import { formatRelativeTime, formatDate } from '../../utils/helpers';
 
@@ -143,15 +144,54 @@ export default function MyPostsScreen() {
   };
 
   const handleMarkUrgent = async () => {
-    if (!selectedPost) return;
+    if (!selectedPost || !user) return;
 
     try {
-      await updateJobStatus(selectedPost.id, 'urgent');
-      setPosts(prev =>
-        prev.map(p => (p.id === selectedPost.id ? { ...p, status: 'urgent' as const } : p))
-      );
-      setShowActionModal(false);
-      Alert.alert('สำเร็จ', 'ทำเครื่องหมายด่วนเรียบร้อยแล้ว');
+      // Check if user can use free urgent
+      const canUseFree = await canUseFreeUrgent(user.uid);
+      
+      if (canUseFree) {
+        // Free urgent available - use it directly
+        Alert.alert(
+          '⚡ ทำเครื่องหมายด่วน',
+          'คุณมีสิทธิ์ใช้ปุ่มด่วนฟรี 1 ครั้ง\n\nต้องการใช้ตอนนี้หรือไม่?',
+          [
+            { text: 'ยกเลิก', style: 'cancel' },
+            {
+              text: 'ใช้ฟรี',
+              onPress: async () => {
+                try {
+                  await updateJobStatus(selectedPost.id, 'urgent');
+                  await markFreeUrgentUsed(user.uid);
+                  setPosts(prev =>
+                    prev.map(p => (p.id === selectedPost.id ? { ...p, status: 'urgent' as const } : p))
+                  );
+                  setShowActionModal(false);
+                  Alert.alert('สำเร็จ', 'ทำเครื่องหมายด่วนเรียบร้อยแล้ว!');
+                } catch (error) {
+                  Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถอัปเดตได้');
+                }
+              },
+            },
+          ]
+        );
+      } else {
+        // Need to pay 49 THB
+        setShowActionModal(false);
+        Alert.alert(
+          '⚡ ทำเครื่องหมายด่วน',
+          `ทำให้ประกาศ "${selectedPost.title}" โดดเด่นขึ้น!\n\nราคา: ฿49`,
+          [
+            { text: 'ยกเลิก', style: 'cancel' },
+            {
+              text: 'ชำระเงิน ฿49',
+              onPress: () => {
+                Alert.alert('ระบบชำระเงิน', 'ระบบชำระเงินกำลังพัฒนา\nติดต่อ admin เพื่อทำเครื่องหมายด่วน');
+              },
+            },
+          ]
+        );
+      }
     } catch (error) {
       Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถอัปเดตได้');
     }
@@ -187,6 +227,25 @@ export default function MyPostsScreen() {
     if (!selectedPost) return;
     setShowActionModal(false);
     (navigation as any).navigate('PostJob', { editJob: selectedPost });
+  };
+
+  const handleExtendPost = () => {
+    if (!selectedPost) return;
+    setShowActionModal(false);
+    // TODO: Integrate with payment system
+    Alert.alert(
+      '⏰ ต่ออายุประกาศ',
+      `ต่ออายุประกาศ "${selectedPost.title}" เพิ่มอีก 1 วัน\n\nราคา: ฿19`,
+      [
+        { text: 'ยกเลิก', style: 'cancel' },
+        {
+          text: 'ชำระเงิน ฿19',
+          onPress: () => {
+            Alert.alert('ระบบชำระเงิน', 'ระบบชำระเงินกำลังพัฒนา\nติดต่อ admin เพื่อต่ออายุ');
+          },
+        },
+      ]
+    );
   };
 
   const handleViewApplicants = () => {
@@ -454,13 +513,23 @@ export default function MyPostsScreen() {
                     <Text style={styles.modalActionText}>แก้ไข</Text>
                   </TouchableOpacity>
 
+                  {/* Extend Post */}
+                  {selectedPost.status !== 'closed' && (
+                    <TouchableOpacity style={styles.modalAction} onPress={handleExtendPost}>
+                      <View style={[styles.modalActionIcon, { backgroundColor: '#E8F5E9' }]}>
+                        <Ionicons name="time" size={22} color="#4CAF50" />
+                      </View>
+                      <Text style={styles.modalActionText}>ต่ออายุ ฿19</Text>
+                    </TouchableOpacity>
+                  )}
+
                   {/* Mark Urgent */}
                   {selectedPost.status !== 'urgent' && selectedPost.status !== 'closed' && (
                     <TouchableOpacity style={styles.modalAction} onPress={handleMarkUrgent}>
                       <View style={[styles.modalActionIcon, { backgroundColor: COLORS.warningLight || '#FFF3E0' }]}>
                         <Ionicons name="flash" size={22} color={COLORS.warning} />
                       </View>
-                      <Text style={styles.modalActionText}>ทำเครื่องหมายด่วน</Text>
+                      <Text style={styles.modalActionText}>ด่วน ฿49</Text>
                     </TouchableOpacity>
                   )}
 

@@ -13,7 +13,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { Subscription, SubscriptionPlan, SUBSCRIPTION_PLANS } from '../types';
+import { Subscription, SubscriptionPlan, SUBSCRIPTION_PLANS, PRICING } from '../types';
 
 const USERS_COLLECTION = 'users';
 const JOBS_COLLECTION = 'jobs';
@@ -103,6 +103,7 @@ export async function canUserPostToday(userId: string): Promise<{
   canPost: boolean;
   postsRemaining: number | null; // null = unlimited
   reason?: string;
+  canPayForExtra?: boolean; // Can pay 19 THB for extra post
 }> {
   try {
     const subscription = await getUserSubscription(userId);
@@ -132,7 +133,8 @@ export async function canUserPostToday(userId: string): Promise<{
       return {
         canPost: false,
         postsRemaining: 0,
-        reason: `คุณโพสต์ครบ ${maxPosts} ครั้งแล้ววันนี้ อัพเกรดเป็น Premium เพื่อโพสต์ไม่จำกัด`,
+        reason: `คุณโพสต์ครบ ${maxPosts} ครั้งแล้ววันนี้`,
+        canPayForExtra: true, // Can pay 19 THB for extra post
       };
     }
 
@@ -242,5 +244,81 @@ export function getSubscriptionStatusDisplay(subscription: Subscription): {
     planName: '🆓 ฟรี',
     statusText: 'แพ็กเกจฟรี',
     statusColor: '#888',
+  };
+}
+
+// ============================================
+// CHECK IF USER CAN USE FREE URGENT
+// ============================================
+export async function canUseFreeUrgent(userId: string): Promise<boolean> {
+  try {
+    const subscription = await getUserSubscription(userId);
+    
+    // Premium users always have free urgent
+    if (subscription.plan === 'premium') return true;
+    
+    // Free users: check if they've used their one free urgent
+    return !subscription.freeUrgentUsed;
+  } catch (error) {
+    console.error('Error checking free urgent:', error);
+    return false;
+  }
+}
+
+// ============================================
+// MARK FREE URGENT AS USED
+// ============================================
+export async function markFreeUrgentUsed(userId: string): Promise<void> {
+  try {
+    const subscription = await getUserSubscription(userId);
+    await updateUserSubscription(userId, {
+      ...subscription,
+      freeUrgentUsed: true,
+    });
+  } catch (error) {
+    console.error('Error marking free urgent used:', error);
+    throw error;
+  }
+}
+
+// ============================================
+// EXTEND POST EXPIRY (19 THB for 1 day)
+// ============================================
+export async function extendPostExpiry(postId: string, days: number = 1): Promise<Date> {
+  try {
+    const postDoc = await getDoc(doc(db, JOBS_COLLECTION, postId));
+    
+    if (!postDoc.exists()) {
+      throw new Error('ไม่พบประกาศนี้');
+    }
+    
+    const data = postDoc.data();
+    const currentExpiry = data.expiresAt?.toDate?.() || new Date();
+    
+    // Add days to current expiry
+    const newExpiry = new Date(currentExpiry);
+    newExpiry.setDate(newExpiry.getDate() + days);
+    
+    await updateDoc(doc(db, JOBS_COLLECTION, postId), {
+      expiresAt: newExpiry,
+      updatedAt: new Date(),
+    });
+    
+    return newExpiry;
+  } catch (error) {
+    console.error('Error extending post:', error);
+    throw error;
+  }
+}
+
+// ============================================
+// GET PRICING INFO
+// ============================================
+export function getPricingInfo() {
+  return {
+    subscription: PRICING.subscription,     // 89 THB/month
+    extendPost: PRICING.extendPost,         // 19 THB per day
+    extraPost: PRICING.extraPost,           // 19 THB per extra post
+    urgentPost: PRICING.urgentPost,         // 49 THB to make urgent
   };
 }

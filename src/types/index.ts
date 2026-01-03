@@ -14,22 +14,41 @@ export interface Subscription {
   // Limits for free plan
   postsToday?: number;
   lastPostDate?: string; // YYYY-MM-DD format
+  // Free urgent usage (1 free per account)
+  freeUrgentUsed?: boolean;
 }
+
+// Pricing Constants (in THB)
+export const PRICING = {
+  subscription: 89,       // Premium subscription per month
+  extendPost: 19,         // Extend post 1 day
+  extraPost: 19,          // Additional post beyond daily limit
+  urgentPost: 49,         // Make post urgent
+} as const;
 
 export const SUBSCRIPTION_PLANS = {
   free: {
     name: 'ฟรี',
     price: 0,
-    postExpiryDays: 2,      // โพสต์หมดอายุใน 2 วัน
+    postExpiryDays: 3,      // โพสต์หมดอายุใน 3 วัน
     maxPostsPerDay: 2,      // โพสต์ได้ 2 ครั้งต่อวัน
-    features: ['โพสต์ได้ 2 ครั้ง/วัน', 'โพสต์อยู่ 2 วัน'],
+    features: [
+      'โพสต์ได้ 2 ครั้ง/วัน',
+      'โพสต์อยู่ 3 วัน',
+      'ปุ่มด่วนฟรี 1 ครั้ง',
+    ],
   },
   premium: {
     name: 'Premium',
-    price: 199,
+    price: 89,              // ลดจาก 199 เป็น 89 บาท/เดือน
     postExpiryDays: 30,     // โพสต์อยู่ 30 วัน
     maxPostsPerDay: null,   // ไม่จำกัด
-    features: ['โพสต์ได้ไม่จำกัด', 'โพสต์อยู่ 30 วัน', 'ไม่มีโฆษณา'],
+    features: [
+      'โพสต์ได้ไม่จำกัด',
+      'โพสต์อยู่ 30 วัน',
+      'ปุ่มด่วนฟรีไม่จำกัด',
+      'ไม่มีโฆษณา',
+    ],
   },
 } as const;
 

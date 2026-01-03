@@ -392,14 +392,14 @@ export default function HomeScreen({ navigation }: Props) {
         const userPosts = await getUserPosts(user.uid);
         const now = new Date();
         
-        // Filter posts that are expiring within 3 days
+        // Filter posts that are expiring within 1 day (changed from 3 days)
         const expiring = userPosts.filter(post => {
           if (post.status === 'closed') return false;
           if (!post.expiresAt) return false;
           
           const expiryDate = new Date(post.expiresAt);
           const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-          return daysLeft <= 3 && daysLeft > 0;
+          return daysLeft <= 1 && daysLeft > 0; // Only show when 1 day or less remaining
         });
         
         if (expiring.length > 0) {
@@ -757,17 +757,28 @@ export default function HomeScreen({ navigation }: Props) {
                 borderRadius: BORDER_RADIUS.md,
                 marginBottom: SPACING.sm,
                 borderLeftWidth: 4,
-                borderLeftColor: daysLeft <= 1 ? COLORS.error : COLORS.warning,
+                borderLeftColor: COLORS.error,
               }}>
                 <Text style={{ fontWeight: '600', color: COLORS.text }} numberOfLines={1}>
                   {post.title}
                 </Text>
-                <Text style={{ fontSize: FONT_SIZES.sm, color: daysLeft <= 1 ? COLORS.error : COLORS.warning, marginTop: 4 }}>
-                  ⚠️ เหลือเวลาอีก {daysLeft} วัน
+                <Text style={{ fontSize: FONT_SIZES.sm, color: COLORS.error, marginTop: 4 }}>
+                  ⚠️ จะหมดอายุภายใน 24 ชั่วโมง!
                 </Text>
               </View>
             );
           })}
+          
+          <View style={{ 
+            backgroundColor: '#E3F2FD', 
+            padding: SPACING.md, 
+            borderRadius: BORDER_RADIUS.md,
+            marginTop: SPACING.sm,
+          }}>
+            <Text style={{ fontSize: FONT_SIZES.sm, color: COLORS.primary, textAlign: 'center' }}>
+              💡 ต่ออายุประกาศได้ในราคา 19 บาท/วัน
+            </Text>
+          </View>
           
           <View style={{ flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.md }}>
             <Button

@@ -630,7 +630,7 @@ export default function PostJobScreen({ navigation, route }: Props) {
               </View>
               <View style={styles.urgentPricing}>
                 <Text style={styles.urgentPriceLabel}>ค่าบริการ:</Text>
-                <Text style={styles.urgentPrice}>฿99/ประกาศ</Text>
+                <Text style={styles.urgentPrice}>฿49/ประกาศ</Text>
               </View>
             </View>
           )}
@@ -666,7 +666,7 @@ export default function PostJobScreen({ navigation, route }: Props) {
         <Button
           title={isLoading 
             ? (isEditMode ? 'กำลังบันทึก...' : 'กำลังโพสต์...') 
-            : (isEditMode ? 'บันทึกการแก้ไข ✓' : (form.isUrgent ? 'โพสต์ด่วน ⚡ (฿99)' : 'โพสต์เลย 🚀'))
+            : (isEditMode ? 'บันทึกการแก้ไข ✓' : (form.isUrgent ? 'โพสต์ด่วน ⚡ (฿49)' : 'โพสต์เลย 🚀'))
           }
           onPress={handleSubmit}
           loading={isLoading}
@@ -855,7 +855,7 @@ export default function PostJobScreen({ navigation, route }: Props) {
 
           <View style={[styles.upgradeExtraOptions, { backgroundColor: '#FFF8E1', marginTop: SPACING.sm }]}>
             <Text style={[styles.upgradeExtraTitle, { color: '#FF8F00' }]}>🎁 โบนัส Premium:</Text>
-            <Text style={[styles.upgradeExtraItem, { color: '#FF8F00' }]}>• แถมปุ่มด่วนฟรี 1 ครั้ง!</Text>
+            <Text style={[styles.upgradeExtraItem, { color: '#FF8F00' }]}>• แถมปุ่มต้องการด่วนฟรี 1 ครั้ง!</Text>
           </View>
 
           <TouchableOpacity

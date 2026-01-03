@@ -9,7 +9,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   Modal,
 } from 'react-native';
@@ -19,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { Loading, EmptyState, Button, Avatar } from '../../components/common';
+import CustomAlert, { AlertState, initialAlertState, createAlert } from '../../components/common/CustomAlert';
 import { getUserPosts, updateJobStatus, deleteJob, subscribeToUserPosts } from '../../services/jobService';
 import { canUseFreeUrgent, markFreeUrgentUsed } from '../../services/subscriptionService';
 import { JobPost } from '../../types';
@@ -42,6 +42,9 @@ export default function MyPostsScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedPost, setSelectedPost] = useState<JobPost | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
+  const [alert, setAlert] = useState<AlertState>(initialAlertState);
+
+  const closeAlert = () => setAlert(initialAlertState);
 
   // Load user's posts
   const loadPosts = useCallback(async () => {
@@ -52,7 +55,7 @@ export default function MyPostsScreen() {
       setPosts(userPosts);
     } catch (error) {
       console.error('Error loading posts:', error);
-      Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถโหลดประกาศได้');
+      setAlert(createAlert.error('เกิดข้อผิดพลาด', 'ไม่สามารถโหลดประกาศได้'));
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -103,29 +106,29 @@ export default function MyPostsScreen() {
   const handleClosePost = async () => {
     if (!selectedPost) return;
 
-    Alert.alert(
-      'ปิดประกาศ',
-      'คุณต้องการปิดประกาศนี้หรือไม่? ผู้คนจะไม่เห็นประกาศนี้อีก',
-      [
-        { text: 'ยกเลิก', style: 'cancel' },
+    setAlert({
+      ...createAlert.warning('ปิดประกาศ', 'คุณต้องการปิดประกาศนี้หรือไม่?\nผู้คนจะไม่เห็นประกาศนี้อีก'),
+      buttons: [
+        { text: 'ยกเลิก', style: 'cancel', onPress: closeAlert },
         {
           text: 'ปิดประกาศ',
           style: 'destructive',
           onPress: async () => {
+            closeAlert();
             try {
               await updateJobStatus(selectedPost.id, 'closed');
               setPosts(prev =>
                 prev.map(p => (p.id === selectedPost.id ? { ...p, status: 'closed' as const } : p))
               );
               setShowActionModal(false);
-              Alert.alert('สำเร็จ', 'ปิดประกาศเรียบร้อยแล้ว');
+              setAlert(createAlert.success('สำเร็จ', 'ปิดประกาศเรียบร้อยแล้ว'));
             } catch (error) {
-              Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถปิดประกาศได้');
+              setAlert(createAlert.error('เกิดข้อผิดพลาด', 'ไม่สามารถปิดประกาศได้'));
             }
           },
         },
-      ]
-    );
+      ],
+    } as AlertState);
   };
 
   const handleReactivatePost = async () => {
@@ -137,9 +140,9 @@ export default function MyPostsScreen() {
         prev.map(p => (p.id === selectedPost.id ? { ...p, status: 'active' as const } : p))
       );
       setShowActionModal(false);
-      Alert.alert('สำเร็จ', 'เปิดประกาศใหม่เรียบร้อยแล้ว');
+      setAlert(createAlert.success('สำเร็จ', 'เปิดประกาศใหม่เรียบร้อยแล้ว'));
     } catch (error) {
-      Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถเปิดประกาศได้');
+      setAlert(createAlert.error('เกิดข้อผิดพลาด', 'ไม่สามารถเปิดประกาศได้'));
     }
   };
 
@@ -152,14 +155,14 @@ export default function MyPostsScreen() {
       
       if (canUseFree) {
         // Premium user with free urgent bonus
-        Alert.alert(
-          '🎁 สิทธิ์พิเศษ Premium',
-          'คุณได้รับปุ่มด่วนฟรี 1 ครั้ง จากการเป็นสมาชิก Premium!\n\nต้องการใช้ตอนนี้หรือไม่?',
-          [
-            { text: 'ยกเลิก', style: 'cancel' },
+        setAlert({
+          ...createAlert.info('🎁 สิทธิ์พิเศษ Premium', 'คุณได้รับปุ่มด่วนฟรี 1 ครั้ง\nจากการเป็นสมาชิก Premium!\n\nต้องการใช้ตอนนี้หรือไม่?'),
+          buttons: [
+            { text: 'ยกเลิก', style: 'cancel', onPress: closeAlert },
             {
               text: '🎁 ใช้สิทธิ์ฟรี',
               onPress: async () => {
+                closeAlert();
                 try {
                   await updateJobStatus(selectedPost.id, 'urgent');
                   await markFreeUrgentUsed(user.uid);
@@ -167,60 +170,60 @@ export default function MyPostsScreen() {
                     prev.map(p => (p.id === selectedPost.id ? { ...p, status: 'urgent' as const } : p))
                   );
                   setShowActionModal(false);
-                  Alert.alert('สำเร็จ', 'ทำเครื่องหมายด่วนเรียบร้อยแล้ว!');
+                  setAlert(createAlert.success('สำเร็จ', 'ทำเครื่องหมายด่วนเรียบร้อยแล้ว!'));
                 } catch (error) {
-                  Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถอัปเดตได้');
+                  setAlert(createAlert.error('เกิดข้อผิดพลาด', 'ไม่สามารถอัปเดตได้'));
                 }
               },
             },
-          ]
-        );
+          ],
+        } as AlertState);
       } else {
         // Need to pay 49 THB
         setShowActionModal(false);
-        Alert.alert(
-          '⚡ ทำเครื่องหมายด่วน',
-          `ทำให้ประกาศ "${selectedPost.title}" โดดเด่นขึ้น!\n\nราคา: ฿49`,
-          [
-            { text: 'ยกเลิก', style: 'cancel' },
+        setAlert({
+          ...createAlert.warning('⚡ ทำเครื่องหมายด่วน', `ทำให้ประกาศ "${selectedPost.title}" โดดเด่นขึ้น!\n\nราคา: ฿49`),
+          buttons: [
+            { text: 'ยกเลิก', style: 'cancel', onPress: closeAlert },
             {
               text: 'ชำระเงิน ฿49',
               onPress: () => {
-                Alert.alert('ระบบชำระเงิน', 'ระบบชำระเงินกำลังพัฒนา\nติดต่อ admin เพื่อทำเครื่องหมายด่วน');
+                closeAlert();
+                setAlert(createAlert.info('ระบบชำระเงิน', 'ระบบชำระเงินกำลังพัฒนา\nติดต่อ admin เพื่อทำเครื่องหมายด่วน'));
               },
             },
-          ]
-        );
+          ],
+        } as AlertState);
       }
     } catch (error) {
-      Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถอัปเดตได้');
+      setAlert(createAlert.error('เกิดข้อผิดพลาด', 'ไม่สามารถอัปเดตได้'));
     }
   };
 
   const handleDeletePost = async () => {
     if (!selectedPost) return;
 
-    Alert.alert(
-      'ลบประกาศ',
-      'คุณต้องการลบประกาศนี้ถาวรหรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้',
-      [
-        { text: 'ยกเลิก', style: 'cancel' },
+    setAlert({
+      ...createAlert.error('🗑️ ลบประกาศ', 'คุณต้องการลบประกาศนี้ถาวรหรือไม่?\nการดำเนินการนี้ไม่สามารถย้อนกลับได้'),
+      buttons: [
+        { text: 'ยกเลิก', style: 'cancel', onPress: closeAlert },
         {
           text: 'ลบถาวร',
           style: 'destructive',
           onPress: async () => {
+            closeAlert();
             try {
               await deleteJob(selectedPost.id);
               setPosts(prev => prev.filter(p => p.id !== selectedPost.id));
               setShowActionModal(false);
-              Alert.alert('สำเร็จ', 'ลบประกาศเรียบร้อยแล้ว');
+              setAlert(createAlert.success('สำเร็จ', 'ลบประกาศเรียบร้อยแล้ว'));
             } catch (error) {
-              Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถลบประกาศได้');
+              setAlert(createAlert.error('เกิดข้อผิดพลาด', 'ไม่สามารถลบประกาศได้'));
             }
           },
         },
-      ]
-    );
+      ],
+    } as AlertState);
   };
 
   const handleEditPost = () => {
@@ -233,19 +236,19 @@ export default function MyPostsScreen() {
     if (!selectedPost) return;
     setShowActionModal(false);
     // TODO: Integrate with payment system
-    Alert.alert(
-      '⏰ ต่ออายุประกาศ',
-      `ต่ออายุประกาศ "${selectedPost.title}" เพิ่มอีก 1 วัน\n\nราคา: ฿19`,
-      [
-        { text: 'ยกเลิก', style: 'cancel' },
+    setAlert({
+      ...createAlert.info('⏰ ต่ออายุประกาศ', `ต่ออายุประกาศ "${selectedPost.title}"\nเพิ่มอีก 1 วัน\n\nราคา: ฿19`),
+      buttons: [
+        { text: 'ยกเลิก', style: 'cancel', onPress: closeAlert },
         {
           text: 'ชำระเงิน ฿19',
           onPress: () => {
-            Alert.alert('ระบบชำระเงิน', 'ระบบชำระเงินกำลังพัฒนา\nติดต่อ admin เพื่อต่ออายุ');
+            closeAlert();
+            setAlert(createAlert.info('ระบบชำระเงิน', 'ระบบชำระเงินกำลังพัฒนา\nติดต่อ admin เพื่อต่ออายุ'));
           },
         },
-      ]
-    );
+      ],
+    } as AlertState);
   };
 
   const handleViewApplicants = () => {
@@ -570,6 +573,16 @@ export default function MyPostsScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Custom Alert (SweetAlert style) */}
+      <CustomAlert
+        visible={alert.visible}
+        type={alert.type}
+        title={alert.title}
+        message={alert.message}
+        buttons={alert.buttons}
+        onClose={closeAlert}
+      />
     </SafeAreaView>
   );
 }

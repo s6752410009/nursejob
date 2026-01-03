@@ -459,6 +459,19 @@ export default function ProfileScreen({ navigation }: Props) {
             <Text style={styles.linkArrow}>→</Text>
           </TouchableOpacity>
           <Divider />
+
+          <TouchableOpacity 
+            style={[styles.linkItem, { backgroundColor: '#FFF8E1' }]} 
+            onPress={() => nav.navigate('Shop')}
+          >
+            <Text style={styles.linkIcon}>🛒</Text>
+            <Text style={[styles.linkText, { color: '#FF8F00' }]}>ร้านค้า / ซื้อบริการ</Text>
+            <View style={{ backgroundColor: '#FFD700', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
+              <Text style={{ fontSize: 10, color: '#000', fontWeight: '600' }}>Premium</Text>
+            </View>
+            <Text style={styles.linkArrow}>→</Text>
+          </TouchableOpacity>
+          <Divider />
           
           {isHospital && (
             <>

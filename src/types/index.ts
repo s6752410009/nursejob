@@ -254,6 +254,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   Favorites: undefined;
   MyPosts: undefined;
+  Shop: undefined; // ร้านค้า / ซื้อบริการ
   Documents: undefined;
   Applicants: undefined;
   Reviews: { hospitalId: string; hospitalName: string };

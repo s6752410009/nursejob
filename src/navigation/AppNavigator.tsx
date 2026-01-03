@@ -45,6 +45,7 @@ import HelpScreen from '../screens/help/HelpScreen';
 import TermsScreen from '../screens/legal/TermsScreen';
 import PrivacyScreen from '../screens/legal/PrivacyScreen';
 import VerificationScreen from '../screens/verification/VerificationScreen';
+import ShopScreen from '../screens/shop/ShopScreen';
 
 // Admin Screens
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
@@ -270,6 +271,15 @@ function RootNavigator() {
       <RootStack.Screen 
         name="MyPosts" 
         component={MyPostsScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+
+      {/* Shop - ร้านค้า */}
+      <RootStack.Screen 
+        name="Shop" 
+        component={ShopScreen}
         options={{
           animation: 'slide_from_right',
         }}

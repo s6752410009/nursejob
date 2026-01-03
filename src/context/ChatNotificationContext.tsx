@@ -13,6 +13,7 @@ import {
   Platform,
   Vibration,
 } from 'react-native';
+import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from './AuthContext';
 import { subscribeToConversations } from '../services/chatService';
@@ -134,31 +135,58 @@ export function ChatNotificationProvider({ children, navigation }: Props) {
   const previousConversations = useRef<Map<string, { lastMessage: string; lastMessageAt: any }>>(new Map());
   const isFirstLoad = useRef(true);
 
-  // Play notification sound
-  const playSound = useCallback(() => {
+  // Play notification sound/vibration
+  const playSound = useCallback(async () => {
     try {
-      if (Platform.OS === 'web') {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
+      if (Platform.OS !== 'web') {
+        // Vibrate pattern on mobile: wait, vibrate, wait, vibrate (more noticeable)
+        Vibration.vibrate([0, 150, 100, 150]);
         
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        // Nice notification sound
-        oscillator.frequency.value = 880;
-        oscillator.type = 'sine';
-        gainNode.gain.value = 0.15;
-        
-        oscillator.start();
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-        setTimeout(() => oscillator.stop(), 300);
+        // Try to set audio mode and play sound via expo-av
+        try {
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: false,
+            playsInSilentModeIOS: true,
+            staysActiveInBackground: false,
+            shouldDuckAndroid: true,
+          });
+          
+          // Use a simple beep sound by creating one programmatically
+          // For now, rely on vibration which is more reliable
+        } catch (audioError) {
+          // Audio not available, vibration still works
+          console.log('Audio mode setup failed, using vibration');
+        }
       } else {
-        // Vibrate on mobile
-        Vibration.vibrate(200);
+        // Web Audio API for web
+        try {
+          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          // Two-tone notification sound
+          oscillator.frequency.value = 880;
+          oscillator.type = 'sine';
+          gainNode.gain.value = 0.15;
+          
+          oscillator.start();
+          
+          // First beep
+          setTimeout(() => {
+            oscillator.frequency.value = 1100;
+          }, 100);
+          
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+          setTimeout(() => oscillator.stop(), 300);
+        } catch (webAudioError) {
+          console.log('Web audio not available');
+        }
       }
     } catch (error) {
-      console.log('Could not play sound');
+      console.log('Could not play notification:', error);
     }
   }, []);
 

@@ -165,12 +165,19 @@ export default function NotificationsScreen() {
   if (!user) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>การแจ้งเตือน</Text>
+          <View style={{ width: 80 }} />
+        </View>
         <EmptyState
           icon="notifications-outline"
           title="เข้าสู่ระบบเพื่อดูการแจ้งเตือน"
           subtitle="รับการแจ้งเตือนงานใหม่และข้อความ"
           actionLabel="เข้าสู่ระบบ"
-          onAction={() => requireAuth(() => {})}
+          onAction={() => (navigation as any).navigate('Auth')}
         />
       </SafeAreaView>
     );

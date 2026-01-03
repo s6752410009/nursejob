@@ -3,6 +3,7 @@
 // ============================================
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   loginUser, 
@@ -414,8 +415,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (user) {
       action();
     } else {
-      setPendingAction(() => action);
-      setShowLoginModal(true);
+      // Show alert first, then open login modal
+      Alert.alert(
+        '🔐 กรุณาเข้าสู่ระบบ',
+        'คุณต้องเข้าสู่ระบบก่อนใช้งานฟีเจอร์นี้',
+        [
+          { 
+            text: 'ยกเลิก', 
+            style: 'cancel' 
+          },
+          { 
+            text: 'เข้าสู่ระบบ', 
+            onPress: () => {
+              setPendingAction(() => action);
+              setShowLoginModal(true);
+            }
+          }
+        ]
+      );
     }
   };
 

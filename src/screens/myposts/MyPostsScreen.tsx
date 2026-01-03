@@ -186,7 +186,7 @@ export default function MyPostsScreen() {
   const handleEditPost = () => {
     if (!selectedPost) return;
     setShowActionModal(false);
-    (navigation as any).navigate('PostJob', { editPost: selectedPost });
+    (navigation as any).navigate('PostJob', { editJob: selectedPost });
   };
 
   const handleViewApplicants = () => {
@@ -253,6 +253,34 @@ export default function MyPostsScreen() {
             โพสต์ {formatRelativeTime(item.createdAt)}
           </Text>
           <View style={styles.postStats}>
+            {/* Days remaining */}
+            {item.expiresAt && item.status !== 'closed' && (() => {
+              const now = new Date();
+              const expiryDate = new Date(item.expiresAt);
+              const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              if (daysLeft <= 0) {
+                return (
+                  <View style={[styles.statItem, { marginRight: 8 }]}>
+                    <Ionicons name="alert-circle" size={14} color={COLORS.error} />
+                    <Text style={[styles.statText, { color: COLORS.error }]}>หมดอายุแล้ว</Text>
+                  </View>
+                );
+              } else if (daysLeft <= 3) {
+                return (
+                  <View style={[styles.statItem, { marginRight: 8 }]}>
+                    <Ionicons name="time" size={14} color={COLORS.warning} />
+                    <Text style={[styles.statText, { color: COLORS.warning }]}>เหลือ {daysLeft} วัน</Text>
+                  </View>
+                );
+              } else {
+                return (
+                  <View style={[styles.statItem, { marginRight: 8 }]}>
+                    <Ionicons name="time-outline" size={14} color={COLORS.textMuted} />
+                    <Text style={styles.statText}>เหลือ {daysLeft} วัน</Text>
+                  </View>
+                );
+              }
+            })()}
             <View style={styles.statItem}>
               <Ionicons name="eye-outline" size={14} color={COLORS.textMuted} />
               <Text style={styles.statText}>{item.viewsCount || 0}</Text>
@@ -350,8 +378,8 @@ export default function MyPostsScreen() {
         <TouchableOpacity 
           style={styles.addButton}
           onPress={() => {
-            // Navigate to PostJob tab in Main navigator
-            (navigation as any).getParent()?.navigate('Main', { screen: 'PostJob' });
+            // Navigate to PostJob screen
+            (navigation as any).navigate('PostJob');
           }}
         >
           <Ionicons name="add" size={24} color={COLORS.primary} />

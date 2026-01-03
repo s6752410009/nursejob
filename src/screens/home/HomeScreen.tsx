@@ -24,7 +24,7 @@ import { Loading, EmptyState, ModalContainer, Chip, Button, Avatar } from '../..
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, PROVINCES, DEPARTMENTS, DISTRICTS_BY_PROVINCE } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { getJobs, searchJobs, subscribeToJobs } from '../../services/jobService';
+import { getJobs, searchJobs, subscribeToJobs, getUserPosts } from '../../services/jobService';
 import { subscribeToNotifications } from '../../services/notificationsService';
 import { subscribeToFavorites, toggleFavorite, Favorite } from '../../services/favoritesService';
 import { JobPost, MainTabParamList, JobFilters } from '../../types';
@@ -316,6 +316,8 @@ export default function HomeScreen({ navigation }: Props) {
   const [showFilters, setShowFilters] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [showExpiryPopup, setShowExpiryPopup] = useState(false);
+  const [expiringPosts, setExpiringPosts] = useState<JobPost[]>([]);
   const [filters, setFilters] = useState<JobFilters>({
     province: '',
     district: '',
@@ -379,6 +381,39 @@ export default function HomeScreen({ navigation }: Props) {
     });
 
     return () => unsubscribe();
+  }, [user?.uid]);
+
+  // Check for expiring posts on app load
+  useEffect(() => {
+    const checkExpiringPosts = async () => {
+      if (!user?.uid) return;
+      
+      try {
+        const userPosts = await getUserPosts(user.uid);
+        const now = new Date();
+        
+        // Filter posts that are expiring within 3 days
+        const expiring = userPosts.filter(post => {
+          if (post.status === 'closed') return false;
+          if (!post.expiresAt) return false;
+          
+          const expiryDate = new Date(post.expiresAt);
+          const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          return daysLeft <= 3 && daysLeft > 0;
+        });
+        
+        if (expiring.length > 0) {
+          setExpiringPosts(expiring);
+          setShowExpiryPopup(true);
+        }
+      } catch (error) {
+        console.log('Error checking expiring posts:', error);
+      }
+    };
+
+    // Only check once per session
+    const timer = setTimeout(checkExpiringPosts, 2000);
+    return () => clearTimeout(timer);
   }, [user?.uid]);
 
   // Real-time jobs subscription
@@ -698,6 +733,60 @@ export default function HomeScreen({ navigation }: Props) {
         onApply={applyFilters}
         onClear={clearFilters}
       />
+
+      {/* Expiring Posts Popup */}
+      <ModalContainer
+        visible={showExpiryPopup}
+        onClose={() => setShowExpiryPopup(false)}
+        title="⏰ ประกาศใกล้หมดอายุ"
+      >
+        <View style={{ padding: SPACING.md }}>
+          <Text style={{ fontSize: FONT_SIZES.md, color: COLORS.textSecondary, marginBottom: SPACING.md, textAlign: 'center' }}>
+            คุณมี {expiringPosts.length} ประกาศที่ใกล้หมดอายุ
+          </Text>
+          
+          {expiringPosts.slice(0, 3).map((post) => {
+            const now = new Date();
+            const expiryDate = new Date(post.expiresAt as Date);
+            const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            
+            return (
+              <View key={post.id} style={{ 
+                backgroundColor: daysLeft <= 1 ? '#FFEBEE' : '#FFF3E0', 
+                padding: SPACING.md, 
+                borderRadius: BORDER_RADIUS.md,
+                marginBottom: SPACING.sm,
+                borderLeftWidth: 4,
+                borderLeftColor: daysLeft <= 1 ? COLORS.error : COLORS.warning,
+              }}>
+                <Text style={{ fontWeight: '600', color: COLORS.text }} numberOfLines={1}>
+                  {post.title}
+                </Text>
+                <Text style={{ fontSize: FONT_SIZES.sm, color: daysLeft <= 1 ? COLORS.error : COLORS.warning, marginTop: 4 }}>
+                  ⚠️ เหลือเวลาอีก {daysLeft} วัน
+                </Text>
+              </View>
+            );
+          })}
+          
+          <View style={{ flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.md }}>
+            <Button
+              title="ปิด"
+              variant="outline"
+              onPress={() => setShowExpiryPopup(false)}
+              style={{ flex: 1 }}
+            />
+            <Button
+              title="จัดการประกาศ"
+              onPress={() => {
+                setShowExpiryPopup(false);
+                (navigation as any).navigate('MyPosts');
+              }}
+              style={{ flex: 1 }}
+            />
+          </View>
+        </View>
+      </ModalContainer>
     </SafeAreaView>
   );
 }

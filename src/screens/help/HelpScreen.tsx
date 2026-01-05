@@ -244,7 +244,7 @@ export default function HelpScreen() {
         <View style={styles.searchContainer}>
           <Ionicons name="search" size={20} color={colors.textMuted} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="ค้นหาคำถาม..."
             value={searchQuery}
             onChangeText={setSearchQuery}

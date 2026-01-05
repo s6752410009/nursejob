@@ -763,7 +763,7 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
             <Ionicons name="add-circle-outline" size={28} color={colors.primary} />
           </TouchableOpacity>
           <TextInput
-            style={styles.textInput}
+            style={[styles.textInput, { color: colors.text, backgroundColor: colors.backgroundSecondary }]}
             value={inputText}
             onChangeText={setInputText}
             placeholder="พิมพ์ข้อความ..."
@@ -886,7 +886,7 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
             <Text style={styles.reportSubtitle}>กรุณาระบุเหตุผลในการรายงาน</Text>
             
             <TextInput
-              style={styles.reportInput}
+              style={[styles.reportInput, { color: colors.text, backgroundColor: colors.backgroundSecondary }]}
               value={reportReason}
               onChangeText={setReportReason}
               placeholder="เหตุผลในการรายงาน..."

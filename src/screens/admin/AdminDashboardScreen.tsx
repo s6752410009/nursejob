@@ -20,6 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Avatar, ConfirmModal, SuccessModal, ErrorModal } from '../../components/common';
 import {
   getDashboardStats,
@@ -81,6 +82,7 @@ function StatCard({ title, value, icon, color, subtitle }: StatCardProps) {
 // ============================================
 export default function AdminDashboardScreen() {
   const { user, logout, isAdmin } = useAuth();
+  const { colors } = useTheme();
   const navigation = useNavigation();
   
   // State
@@ -467,10 +469,11 @@ export default function AdminDashboardScreen() {
       
       {/* Search */}
       <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color={COLORS.textSecondary} />
+        <Ionicons name="search" size={20} color={colors.textSecondary} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
           placeholder="ค้นหาด้วย ชื่อ, อีเมล, เบอร์โทร..."
+          placeholderTextColor={colors.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
           onSubmitEditing={handleSearch}
@@ -478,7 +481,7 @@ export default function AdminDashboardScreen() {
         />
         {searchQuery ? (
           <TouchableOpacity onPress={() => { setSearchQuery(''); handleSearch(); }}>
-            <Ionicons name="close-circle" size={20} color={COLORS.textSecondary} />
+            <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         ) : null}
       </View>

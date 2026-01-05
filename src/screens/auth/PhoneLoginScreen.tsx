@@ -20,6 +20,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button, Input, SuccessModal, ErrorModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { sendMockOTP, verifyMockOTP, isValidThaiPhone } from '../../services/otpService';
 import { findUserByPhone } from '../../services/authService';
 import { AuthStackParamList } from '../../types';
@@ -37,6 +38,8 @@ interface Props {
 // Component
 // ============================================
 export default function PhoneLoginScreen({ navigation }: Props) {
+  const { colors } = useTheme();
+  
   // State
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phone, setPhone] = useState('');
@@ -289,6 +292,7 @@ export default function PhoneLoginScreen({ navigation }: Props) {
                     ref={(ref) => { inputRefs.current[index] = ref; }}
                     style={[
                       styles.otpInput,
+                      { color: colors.text, backgroundColor: colors.surface, borderColor: digit ? colors.primary : colors.border },
                       digit ? styles.otpInputFilled : null,
                     ]}
                     value={digit}

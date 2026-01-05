@@ -572,7 +572,7 @@ export default function ProfileScreen({ navigation }: Props) {
           <View style={styles.bioInput}>
             <Text style={styles.bioLabel}>เกี่ยวกับฉัน</Text>
             <TextInput
-              style={styles.bioTextInput}
+              style={[styles.bioTextInput, { color: colors.text, backgroundColor: colors.surface, borderColor: colors.border }]}
               value={editForm.bio}
               onChangeText={(text) => setEditForm({ ...editForm, bio: text })}
               placeholder="บอกเล่าเกี่ยวกับตัวคุณ ความเชี่ยวชาญ และสิ่งที่คุณมองหา..."

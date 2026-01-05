@@ -667,17 +667,17 @@ export default function HomeScreen({ navigation }: Props) {
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <View style={styles.searchBar}>
-            <Ionicons name="search-outline" size={20} color={COLORS.textMuted} style={styles.searchIcon} />
+            <Ionicons name="search-outline" size={20} color={colors.textMuted} style={styles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={[styles.searchInput, { color: colors.text }]}
               placeholder="ค้นหาเวร, แผนก, สถานที่..."
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={colors.textMuted}
               value={searchQuery}
               onChangeText={handleSearch}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => handleSearch('')}>
-                <Ionicons name="close-circle" size={20} color={COLORS.textMuted} />
+                <Ionicons name="close-circle" size={20} color={colors.textMuted} />
               </TouchableOpacity>
             )}
           </View>

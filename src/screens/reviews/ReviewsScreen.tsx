@@ -395,9 +395,44 @@ export default function ReviewsScreen() {
                 <StarRating rating={newRating} size={32} onRate={setNewRating} editable={true} />
               </View>
 
-              {/* Title */} <View style={styles.formGroup}> <Text style={styles.formLabel}>หัวข้อ *</Text> <TextInput style={styles.input} placeholder="เช่น ประสบการณ์ทำงานที่ดี" value={newTitle} onChangeText={setNewTitle} maxLength={100} /> </View> {/* Content */} <View style={styles.formGroup}> <Text style={styles.formLabel}>รายละเอียด *</Text> <TextInput style={[styles.input, styles.textArea]} placeholder="บอกเล่าประสบการณ์ของคุณ..." value={newContent} onChangeText={setNewContent} multiline={true} numberOfLines={4} textAlignVertical="top" maxLength={1000} /> </View> {/* Pros */} <View style={styles.formGroup}> <Text style={styles.formLabel}> <Ionicons name="thumbs-up" size={14} color={colors.success} /> ข้อดี </Text> <TextInput
-                  style={styles.input}
+              {/* Title */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>หัวข้อ *</Text>
+                <TextInput
+                  style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+                  placeholder="เช่น ประสบการณ์ทำงานที่ดี"
+                  placeholderTextColor={colors.textMuted}
+                  value={newTitle}
+                  onChangeText={setNewTitle}
+                  maxLength={100}
+                />
+              </View>
+
+              {/* Content */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>รายละเอียด *</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea, { color: colors.text, borderColor: colors.border }]}
+                  placeholder="บอกเล่าประสบการณ์ของคุณ..."
+                  placeholderTextColor={colors.textMuted}
+                  value={newContent}
+                  onChangeText={setNewContent}
+                  multiline={true}
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  maxLength={1000}
+                />
+              </View>
+
+              {/* Pros */}
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>
+                  <Ionicons name="thumbs-up" size={14} color={colors.success} /> ข้อดี
+                </Text>
+                <TextInput
+                  style={[styles.input, { color: colors.text, borderColor: colors.border }]}
                   placeholder="สิ่งที่ชอบ..."
+                  placeholderTextColor={colors.textMuted}
                   value={newPros}
                   onChangeText={setNewPros}
                   maxLength={200}
@@ -410,8 +445,9 @@ export default function ReviewsScreen() {
                   <Ionicons name="thumbs-down" size={14} color={colors.error} /> ข้อเสีย
                 </Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: colors.text, borderColor: colors.border }]}
                   placeholder="สิ่งที่ควรปรับปรุง..."
+                  placeholderTextColor={colors.textMuted}
                   value={newCons}
                   onChangeText={setNewCons}
                   maxLength={200}

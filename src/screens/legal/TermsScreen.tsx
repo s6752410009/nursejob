@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Section {
   title: string;
@@ -139,6 +140,7 @@ const TERMS_SECTIONS: Section[] = [
 
 export default function TermsScreen() {
   const navigation = useNavigation();
+  const { colors } = useTheme();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

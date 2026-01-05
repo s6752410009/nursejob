@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Avatar, Button, Card, ModalContainer } from '../../components/common';
 import {
   getAllFeedback,
@@ -39,6 +40,7 @@ type FilterType = 'all' | FeedbackStatus;
 export default function AdminFeedbackScreen() {
   const navigation = useNavigation();
   const { user, isAdmin } = useAuth();
+  const { colors } = useTheme();
   
   const [feedback, setFeedback] = useState<AppFeedback[]>([]);
   const [filteredFeedback, setFilteredFeedback] = useState<AppFeedback[]>([]);
@@ -387,8 +389,9 @@ export default function AdminFeedbackScreen() {
       >
         <View style={styles.respondContent}>
           <TextInput
-            style={styles.respondInput}
+            style={[styles.respondInput, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
             placeholder="พิมพ์ข้อความตอบกลับ..."
+            placeholderTextColor={colors.textMuted}
             value={response}
             onChangeText={setResponse}
             multiline

@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Section {
   title: string;
@@ -157,6 +158,7 @@ const PRIVACY_SECTIONS: Section[] = [
 
 export default function PrivacyScreen() {
   const navigation = useNavigation();
+  const { colors } = useTheme();
 
   const handleContactDPO = () => {
     Linking.openURL('mailto:privacy@nursejob.th?subject=คำถามเกี่ยวกับความเป็นส่วนตัว');

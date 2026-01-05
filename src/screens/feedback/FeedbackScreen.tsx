@@ -266,16 +266,18 @@ export default function FeedbackScreen() {
                   <Text style={styles.cardTitle}>ข้อความของคุณ</Text>
                   
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: colors.text, backgroundColor: colors.surface, borderColor: colors.border }]}
                     placeholder="หัวข้อ"
+                    placeholderTextColor={colors.textMuted}
                     value={title}
                     onChangeText={setTitle}
                     maxLength={100}
                   />
                   
                   <TextInput
-                    style={[styles.input, styles.messageInput]}
+                    style={[styles.input, styles.messageInput, { color: colors.text, backgroundColor: colors.surface, borderColor: colors.border }]}
                     placeholder="รายละเอียด... (บอกเราว่าคุณชอบอะไร หรืออยากให้ปรับปรุงอะไร)"
+                    placeholderTextColor={colors.textMuted}
                     value={message}
                     onChangeText={setMessage}
                     multiline

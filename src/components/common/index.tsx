@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 // ============================================
 // BUTTON
@@ -121,30 +122,33 @@ export function Input({
   ...props
 }: InputProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const { colors } = useTheme();
 
   return (
     <View style={[styles.inputContainer, containerStyle]}>
       {label && (
-        <Text style={styles.inputLabel}>
+        <Text style={[styles.inputLabel, { color: colors.text }]}>
           {label}
           {required && <Text style={styles.required}> *</Text>}
         </Text>
       )}
       <View style={[
         styles.inputWrapper,
-        isFocused && styles.inputWrapperFocused,
+        { backgroundColor: colors.surface, borderColor: colors.border },
+        isFocused && [styles.inputWrapperFocused, { borderColor: colors.primary }],
         error && styles.inputWrapperError,
       ]}>
         {icon && iconPosition === 'left' && <View style={styles.inputIcon}>{icon}</View>}
         <TextInput
           style={[
             styles.input,
+            { color: colors.text },
             icon && iconPosition === 'left' ? styles.inputWithIconLeft : undefined,
             icon && iconPosition === 'right' ? styles.inputWithIconRight : undefined,
             multiline && styles.inputMultiline,
             style,
           ]}
-          placeholderTextColor={COLORS.textMuted}
+          placeholderTextColor={colors.textMuted}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           multiline={Boolean(multiline)}

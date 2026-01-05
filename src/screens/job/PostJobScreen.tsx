@@ -203,7 +203,7 @@ export default function PostJobScreen({ navigation, route }: Props) {
   // Guest check
   if (!isAuthenticated) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.centeredView}>
           <Text style={styles.centeredIcon}>📝</Text>
           <Text style={styles.centeredTitle}>เข้าสู่ระบบก่อนโพสต์</Text>
@@ -332,9 +332,9 @@ export default function PostJobScreen({ navigation, route }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
         {isEditMode && (
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Text style={styles.backIcon}>←</Text>

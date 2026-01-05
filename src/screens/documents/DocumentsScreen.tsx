@@ -48,6 +48,7 @@ const documentTypes: { type: DocumentType; icon: string }[] = [
 export default function DocumentsScreen() {
   const { user, requireAuth } = useAuth();
   const navigation = useNavigation();
+  const { colors } = useTheme();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -191,7 +192,7 @@ export default function DocumentsScreen() {
   // Not logged in
   if (!user) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <EmptyState
           icon="documents-outline"
           title="เข้าสู่ระบบเพื่อจัดการเอกสาร"
@@ -247,8 +248,8 @@ export default function DocumentsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>

@@ -213,7 +213,7 @@ export default function ProfileScreen({ navigation }: Props) {
   // Guest view
   if (!isAuthenticated) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.guestContainer}>
           <Text style={styles.guestIcon}>👤</Text>
           <Text style={styles.guestTitle}>ยังไม่ได้เข้าสู่ระบบ</Text>
@@ -232,7 +232,7 @@ export default function ProfileScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView 
         showsVerticalScrollIndicator={false}
         refreshControl={

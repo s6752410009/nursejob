@@ -36,6 +36,7 @@ type StatusFilter = 'all' | 'active' | 'urgent' | 'closed';
 export default function MyPostsScreen() {
   const navigation = useNavigation();
   const { user, requireAuth } = useAuth();
+  const { colors } = useTheme();
   
   const [posts, setPosts] = useState<JobPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -426,8 +427,8 @@ export default function MyPostsScreen() {
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { backgroundColor: colors.surface }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -447,8 +448,8 @@ export default function MyPostsScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { backgroundColor: colors.surface }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -461,9 +462,9 @@ export default function MyPostsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>

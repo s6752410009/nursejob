@@ -65,6 +65,7 @@ const getNotificationColor = (type: NotificationType): string => {
 export default function NotificationsScreen() {
   const navigation = useNavigation();
   const { user, requireAuth } = useAuth();
+  const { colors } = useTheme();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -165,8 +166,8 @@ export default function NotificationsScreen() {
   // Not logged in
   if (!user) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { backgroundColor: colors.surface }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -223,8 +224,8 @@ export default function NotificationsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>

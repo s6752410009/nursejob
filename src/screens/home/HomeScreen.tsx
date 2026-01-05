@@ -622,9 +622,9 @@ export default function HomeScreen({ navigation }: Props) {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.greeting}>

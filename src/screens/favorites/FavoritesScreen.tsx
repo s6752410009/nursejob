@@ -97,7 +97,7 @@ export default function FavoritesScreen() {
   // Not logged in
   if (!user) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         <EmptyState
           icon="🤍"
           title="เข้าสู่ระบบเพื่อดูรายการโปรด"
@@ -173,8 +173,8 @@ export default function FavoritesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
         <TouchableOpacity 
           style={styles.backButton} 
           onPress={() => navigation.goBack()}

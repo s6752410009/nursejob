@@ -93,7 +93,7 @@ function ToastNotification({ visible, senderName, message, onHide }: ToastNotifi
       ]}
     >
       <View style={styles.toastContent}>
-        <Ionicons name="chatbubble-ellipses" size={20} color={colors.primary} />
+        <Ionicons name="chatbubble-ellipses" size={20} color={COLORS.primary} />
         <View style={styles.toastTextContainer}>
           <Text style={styles.toastSender} numberOfLines={1}>{senderName}</Text>
           <Text style={styles.toastMessage} numberOfLines={2}>{message}</Text>
@@ -183,7 +183,7 @@ export function ChatListScreen({ navigation }: ChatListProps) {
   // Guest view
   if (!isAuthenticated) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.guestContainer}>
           <Text style={styles.guestIcon}>💬</Text>
           <Text style={styles.guestTitle}>ยังไม่ได้เข้าสู่ระบบ</Text>
@@ -290,9 +290,9 @@ export function ChatListScreen({ navigation }: ChatListProps) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <Text style={styles.headerTitle}>ข้อความ</Text>
       </View>
 
@@ -698,9 +698,9 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {/* Header */}
-      <View style={styles.chatHeader}>
+      <View style={[styles.chatHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}

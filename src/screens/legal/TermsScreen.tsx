@@ -145,7 +145,7 @@ export default function TermsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>ข้อกำหนดการใช้งาน</Text>
         <View style={{ width: 24 }} />
@@ -154,7 +154,7 @@ export default function TermsScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Last Updated */}
         <View style={styles.lastUpdated}>
-          <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
+          <Ionicons name="time-outline" size={16} color={colors.textMuted} />
           <Text style={styles.lastUpdatedText}>อัปเดตล่าสุด: 1 มกราคม 2568</Text>
         </View>
 
@@ -261,3 +261,4 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
 });
+

@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme';
 import { Button, Card, Input, ModalContainer } from '../../components/common';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { 
   pickImage, 
   takePhoto, 
@@ -203,7 +204,7 @@ export default function VerificationScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>กำลังโหลด...</Text>
         </View>
       </SafeAreaView>
@@ -216,7 +217,7 @@ export default function VerificationScreen({ navigation }: Props) {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>ยืนยันตัวตน</Text>
           <View style={{ width: 24 }} />
@@ -269,7 +270,7 @@ export default function VerificationScreen({ navigation }: Props) {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>ยืนยันตัวตน</Text>
           <View style={{ width: 24 }} />
@@ -277,7 +278,7 @@ export default function VerificationScreen({ navigation }: Props) {
         
         <View style={styles.pendingContainer}>
           <View style={styles.pendingBadge}>
-            <Ionicons name="time-outline" size={80} color={COLORS.warning} />
+            <Ionicons name="time-outline" size={80} color={colors.warning} />
           </View>
           <Text style={styles.pendingTitle}>รอการตรวจสอบ</Text>
           <Text style={styles.pendingSubtitle}>
@@ -315,7 +316,7 @@ export default function VerificationScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>ยืนยันตัวตน</Text>
         <View style={{ width: 24 }} />
@@ -325,7 +326,7 @@ export default function VerificationScreen({ navigation }: Props) {
         {/* Info Banner */}
         <Card style={styles.infoBanner}>
           <View style={styles.infoBannerContent}>
-            <Ionicons name="shield-checkmark" size={40} color={COLORS.primary} />
+            <Ionicons name="shield-checkmark" size={40} color={colors.primary} />
             <View style={styles.infoBannerText}>
               <Text style={styles.infoBannerTitle}>ยืนยันตัวตนเพื่อเพิ่มความน่าเชื่อถือ</Text>
               <Text style={styles.infoBannerSubtitle}>
@@ -356,7 +357,7 @@ export default function VerificationScreen({ navigation }: Props) {
             <Text style={styles.selectButtonText}>
               {LICENSE_TYPES.find(t => t.value === licenseType)?.label || 'เลือกประเภท'}
             </Text>
-            <Ionicons name="chevron-down" size={20} color={COLORS.textMuted} />
+            <Ionicons name="chevron-down" size={20} color={colors.textMuted} />
           </TouchableOpacity>
           
           {/* License Expiry */}
@@ -382,7 +383,7 @@ export default function VerificationScreen({ navigation }: Props) {
               <Image source={{ uri: licenseDocUri }} style={styles.uploadPreview} />
             ) : (
               <View style={styles.uploadPlaceholder}>
-                <Ionicons name="document-outline" size={40} color={COLORS.textMuted} />
+                <Ionicons name="document-outline" size={40} color={colors.textMuted} />
                 <Text style={styles.uploadText}>แตะเพื่ออัพโหลด</Text>
               </View>
             )}
@@ -398,7 +399,7 @@ export default function VerificationScreen({ navigation }: Props) {
               <Image source={{ uri: idCardUri }} style={styles.uploadPreview} />
             ) : (
               <View style={styles.uploadPlaceholder}>
-                <Ionicons name="card-outline" size={40} color={COLORS.textMuted} />
+                <Ionicons name="card-outline" size={40} color={colors.textMuted} />
                 <Text style={styles.uploadText}>แตะเพื่ออัพโหลด</Text>
               </View>
             )}
@@ -414,7 +415,7 @@ export default function VerificationScreen({ navigation }: Props) {
               <Image source={{ uri: selfieUri }} style={styles.uploadPreview} />
             ) : (
               <View style={styles.uploadPlaceholder}>
-                <Ionicons name="person-circle-outline" size={40} color={COLORS.textMuted} />
+                <Ionicons name="person-circle-outline" size={40} color={colors.textMuted} />
                 <Text style={styles.uploadText}>แตะเพื่ออัพโหลด</Text>
               </View>
             )}
@@ -424,7 +425,7 @@ export default function VerificationScreen({ navigation }: Props) {
         {/* Privacy Notice */}
         <Card style={[styles.section, styles.privacyCard]}>
           <View style={styles.privacyContent}>
-            <Ionicons name="lock-closed-outline" size={24} color={COLORS.primary} />
+            <Ionicons name="lock-closed-outline" size={24} color={colors.primary} />
             <Text style={styles.privacyText}>
               ข้อมูลและเอกสารของคุณจะถูกเก็บรักษาอย่างปลอดภัย{'\n'}
               และใช้เพื่อการตรวจสอบเท่านั้น
@@ -463,7 +464,7 @@ export default function VerificationScreen({ navigation }: Props) {
               {type.label}
             </Text>
             {licenseType === type.value && (
-              <Ionicons name="checkmark" size={20} color={COLORS.primary} />
+              <Ionicons name="checkmark" size={20} color={colors.primary} />
             )}
           </TouchableOpacity>
         ))}
@@ -476,16 +477,16 @@ export default function VerificationScreen({ navigation }: Props) {
         title="เลือกรูปภาพ"
       >
         <TouchableOpacity style={styles.modalItem} onPress={selectFromGallery}>
-          <Ionicons name="images-outline" size={24} color={COLORS.primary} />
+          <Ionicons name="images-outline" size={24} color={colors.primary} />
           <Text style={styles.modalItemText}>เลือกจากคลังรูปภาพ</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.modalItem} onPress={takePhotoCamera}>
-          <Ionicons name="camera-outline" size={24} color={COLORS.primary} />
+          <Ionicons name="camera-outline" size={24} color={colors.primary} />
           <Text style={styles.modalItemText}>ถ่ายรูป</Text>
         </TouchableOpacity>
         {currentImageType === 'license' && (
           <TouchableOpacity style={styles.modalItem} onPress={handlePickDocument}>
-            <Ionicons name="document-outline" size={24} color={COLORS.primary} />
+            <Ionicons name="document-outline" size={24} color={colors.primary} />
             <Text style={styles.modalItemText}>เลือกไฟล์ PDF</Text>
           </TouchableOpacity>
         )}
@@ -731,3 +732,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

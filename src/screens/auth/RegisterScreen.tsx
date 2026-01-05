@@ -149,7 +149,7 @@ export default function RegisterScreen({ navigation }: Props) {
           {/* Illustration */}
           <View style={styles.illustrationContainer}>
             <View style={styles.illustration}>
-              <Ionicons name="phone-portrait-outline" size={64} color={COLORS.primary} />
+              <Ionicons name="phone-portrait-outline" size={64} color={colors.primary} />
             </View>
           </View>
 
@@ -157,7 +157,7 @@ export default function RegisterScreen({ navigation }: Props) {
           <View style={styles.form}>
             {/* Phone Info */}
             <View style={styles.infoBox}>
-              <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} />
+              <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
               <Text style={styles.infoText}>
                 เราจะส่งรหัส OTP 6 หลักไปยังเบอร์โทรศัพท์ของคุณเพื่อยืนยันตัวตน
               </Text>
@@ -187,7 +187,7 @@ export default function RegisterScreen({ navigation }: Props) {
               fullWidth
               size="large"
               style={styles.continueButton}
-              icon={<Ionicons name="arrow-forward" size={20} color={COLORS.white} />}
+              icon={<Ionicons name="arrow-forward" size={20} color={colors.white} />}
               iconPosition="right"
             />
 
@@ -329,3 +329,4 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.md,
   },
 });
+

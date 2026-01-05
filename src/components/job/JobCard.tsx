@@ -10,9 +10,11 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { JobPost } from '../../types';
 import { Badge, Avatar } from '../common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 import { formatRelativeTime } from '../../utils/helpers';
 
 // ============================================
@@ -48,6 +50,7 @@ interface JobCardProps {
   onSave?: () => void;
   isSaved?: boolean;
   variant?: 'default' | 'compact';
+  showPosterProfile?: boolean; // แสดงปุ่มดูโปรไฟล์
 }
 
 // ============================================
@@ -58,8 +61,22 @@ export function JobCard({
   onPress, 
   onSave, 
   isSaved = false,
-  variant = 'default' 
+  variant = 'default',
+  showPosterProfile = true 
 }: JobCardProps) {
+  const navigation = useNavigation();
+  const { colors } = useTheme();
+
+  // Navigate to poster's profile
+  const handlePosterPress = () => {
+    if (showPosterProfile && job.posterId) {
+      (navigation as any).navigate('UserProfile', {
+        userId: job.posterId,
+        userName: job.posterName,
+        userPhoto: job.posterPhoto,
+      });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -73,7 +90,7 @@ export function JobCard({
   if (variant === 'compact') {
     return (
       <TouchableOpacity 
-        style={styles.cardCompact} 
+        style={[styles.cardCompact, { backgroundColor: colors.card, borderColor: colors.border }]} 
         onPress={onPress}
         activeOpacity={0.7}
       >
@@ -106,19 +123,23 @@ export function JobCard({
     >
       {/* Header */}
       <View style={styles.header}>
-        <Avatar 
-          uri={job.posterPhoto} 
-          name={job.posterName} 
-          size={50}
-        />
+        <TouchableOpacity onPress={handlePosterPress} disabled={!showPosterProfile || !job.posterId}>
+          <Avatar 
+            uri={job.posterPhoto} 
+            name={job.posterName} 
+            size={50}
+          />
+        </TouchableOpacity>
         <View style={styles.headerInfo}>
           <View style={styles.nameRow}>
-            <Text style={[
-              styles.posterName,
-              job.posterVerified && styles.posterNameVerified
-            ]} numberOfLines={1}>
-              {job.posterName}
-            </Text>
+            <TouchableOpacity onPress={handlePosterPress} disabled={!showPosterProfile || !job.posterId}>
+              <Text style={[
+                styles.posterName,
+                job.posterVerified && styles.posterNameVerified
+              ]} numberOfLines={1}>
+                {job.posterName}
+              </Text>
+            </TouchableOpacity>
             {job.posterVerified && (
               <View style={styles.verifiedBadge}>
                 <Ionicons name="checkmark-circle" size={14} color="#3B82F6" />

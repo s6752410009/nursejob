@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Loading, EmptyState, Avatar, Button } from '../../components/common';
 import {
   getHospitalReviews,
@@ -87,6 +88,7 @@ export default function ReviewsScreen() {
   const route = useRoute<RouteProp<Record<string, ReviewsRouteParams>, string>>();
   const navigation = useNavigation();
   const { user, requireAuth } = useAuth();
+  const { colors } = useTheme();
   
   const { hospitalId, hospitalName } = route.params || {};
   
@@ -241,7 +243,7 @@ export default function ReviewsScreen() {
         </View>
         {item.isVerified && (
           <View style={styles.verifiedBadge}>
-            <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
+            <Ionicons name="checkmark-circle" size={14} color={colors.success} />
             <Text style={styles.verifiedText}>ยืนยันแล้ว</Text>
           </View>
         )}
@@ -254,13 +256,13 @@ export default function ReviewsScreen() {
         <View style={styles.prosConsContainer}>
           {item.pros && (
             <View style={styles.prosItem}>
-              <Ionicons name="thumbs-up" size={14} color={COLORS.success} />
+              <Ionicons name="thumbs-up" size={14} color={colors.success} />
               <Text style={styles.prosText}>{item.pros}</Text>
             </View>
           )}
           {item.cons && (
             <View style={styles.consItem}>
-              <Ionicons name="thumbs-down" size={14} color={COLORS.error} />
+              <Ionicons name="thumbs-down" size={14} color={colors.error} />
               <Text style={styles.consText}>{item.cons}</Text>
             </View>
           )}
@@ -272,14 +274,14 @@ export default function ReviewsScreen() {
           <Ionicons
             name={item.wouldRecommend ? 'heart' : 'heart-outline'}
             size={14}
-            color={item.wouldRecommend ? COLORS.error : COLORS.textMuted}
+            color={item.wouldRecommend ? colors.error : colors.textMuted}
           />
           <Text style={[styles.recommendText, item.wouldRecommend && styles.recommendActive]}>
             {item.wouldRecommend ? 'แนะนำ' : 'ไม่แนะนำ'}
           </Text>
         </View>
         <TouchableOpacity style={styles.helpfulButton} onPress={() => handleHelpful(item)}>
-          <Ionicons name="thumbs-up-outline" size={16} color={COLORS.textSecondary} />
+          <Ionicons name="thumbs-up-outline" size={16} color={colors.textSecondary} />
           <Text style={styles.helpfulText}>เป็นประโยชน์ ({item.helpful})</Text>
         </TouchableOpacity>
       </View>
@@ -298,7 +300,7 @@ export default function ReviewsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle} numberOfLines={1}>{hospitalName}</Text>
@@ -331,7 +333,7 @@ export default function ReviewsScreen() {
       {/* Write Review Button */}
       {!userReview && (
         <TouchableOpacity style={styles.writeButton} onPress={handleWriteReview}>
-          <Ionicons name="create-outline" size={20} color={COLORS.white} />
+          <Ionicons name="create-outline" size={20} color={colors.white} />
           <Text style={styles.writeButtonText}>เขียนรีวิว</Text>
         </TouchableOpacity>
       )}
@@ -346,7 +348,7 @@ export default function ReviewsScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={[COLORS.primary]}
+            colors={[colors.primary]}
           />
         }
         ListEmptyComponent={
@@ -373,7 +375,7 @@ export default function ReviewsScreen() {
           >
             <View style={styles.modalHeader}>
               <TouchableOpacity onPress={() => setShowWriteModal(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>เขียนรีวิว</Text>
               <TouchableOpacity onPress={handleSubmitReview} disabled={isSubmitting}>
@@ -393,7 +395,7 @@ export default function ReviewsScreen() {
                 <StarRating rating={newRating} size={32} onRate={setNewRating} editable={true} />
               </View>
 
-              {/* Title */} <View style={styles.formGroup}> <Text style={styles.formLabel}>หัวข้อ *</Text> <TextInput style={styles.input} placeholder="เช่น ประสบการณ์ทำงานที่ดี" value={newTitle} onChangeText={setNewTitle} maxLength={100} /> </View> {/* Content */} <View style={styles.formGroup}> <Text style={styles.formLabel}>รายละเอียด *</Text> <TextInput style={[styles.input, styles.textArea]} placeholder="บอกเล่าประสบการณ์ของคุณ..." value={newContent} onChangeText={setNewContent} multiline={true} numberOfLines={4} textAlignVertical="top" maxLength={1000} /> </View> {/* Pros */} <View style={styles.formGroup}> <Text style={styles.formLabel}> <Ionicons name="thumbs-up" size={14} color={COLORS.success} /> ข้อดี </Text> <TextInput
+              {/* Title */} <View style={styles.formGroup}> <Text style={styles.formLabel}>หัวข้อ *</Text> <TextInput style={styles.input} placeholder="เช่น ประสบการณ์ทำงานที่ดี" value={newTitle} onChangeText={setNewTitle} maxLength={100} /> </View> {/* Content */} <View style={styles.formGroup}> <Text style={styles.formLabel}>รายละเอียด *</Text> <TextInput style={[styles.input, styles.textArea]} placeholder="บอกเล่าประสบการณ์ของคุณ..." value={newContent} onChangeText={setNewContent} multiline={true} numberOfLines={4} textAlignVertical="top" maxLength={1000} /> </View> {/* Pros */} <View style={styles.formGroup}> <Text style={styles.formLabel}> <Ionicons name="thumbs-up" size={14} color={colors.success} /> ข้อดี </Text> <TextInput
                   style={styles.input}
                   placeholder="สิ่งที่ชอบ..."
                   value={newPros}
@@ -405,7 +407,7 @@ export default function ReviewsScreen() {
               {/* Cons */}
               <View style={styles.formGroup}>
                 <Text style={styles.formLabel}>
-                  <Ionicons name="thumbs-down" size={14} color={COLORS.error} /> ข้อเสีย
+                  <Ionicons name="thumbs-down" size={14} color={colors.error} /> ข้อเสีย
                 </Text>
                 <TextInput
                   style={styles.input}
@@ -424,7 +426,7 @@ export default function ReviewsScreen() {
                     style={[styles.recommendOption, wouldRecommend && styles.recommendOptionActive]}
                     onPress={() => setWouldRecommend(true)}
                   >
-                    <Ionicons name="heart" size={20} color={wouldRecommend ? COLORS.white : COLORS.error} />
+                    <Ionicons name="heart" size={20} color={wouldRecommend ? colors.white : colors.error} />
                     <Text style={[styles.recommendOptionText, wouldRecommend && styles.recommendOptionTextActive]}>
                       แนะนำ
                     </Text>
@@ -433,7 +435,7 @@ export default function ReviewsScreen() {
                     style={[styles.recommendOption, !wouldRecommend && styles.recommendOptionInactive]}
                     onPress={() => setWouldRecommend(false)}
                   >
-                    <Ionicons name="heart-outline" size={20} color={!wouldRecommend ? COLORS.white : COLORS.textMuted} />
+                    <Ionicons name="heart-outline" size={20} color={!wouldRecommend ? colors.white : colors.textMuted} />
                     <Text style={[styles.recommendOptionText, !wouldRecommend && styles.recommendOptionTextActive]}>
                       ไม่แนะนำ
                     </Text>
@@ -764,3 +766,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

@@ -565,3 +565,42 @@ export async function loginWithPhoneOTP(phone: string): Promise<UserProfile> {
   }
 }
 
+// ==========================================
+// Update User Privacy Settings (ไปยัง Firestore)
+// ==========================================
+export async function updateUserPrivacy(
+  uid: string, 
+  privacySettings: { 
+    profileVisible?: boolean; 
+    showOnlineStatus?: boolean;
+  }
+): Promise<void> {
+  try {
+    const userRef = doc(db, USERS_COLLECTION, uid);
+    await updateDoc(userRef, {
+      'privacy.profileVisible': privacySettings.profileVisible,
+      'privacy.showOnlineStatus': privacySettings.showOnlineStatus,
+      updatedAt: serverTimestamp(),
+    });
+    console.log('Privacy settings updated in Firestore');
+  } catch (error) {
+    console.error('Error updating privacy settings:', error);
+    throw error;
+  }
+}
+
+// ==========================================
+// Update Online Status (สำหรับแสดงสถานะออนไลน์)
+// ==========================================
+export async function updateOnlineStatus(uid: string, isOnline: boolean): Promise<void> {
+  try {
+    const userRef = doc(db, USERS_COLLECTION, uid);
+    await updateDoc(userRef, {
+      isOnline: isOnline,
+      lastActiveAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('Error updating online status:', error);
+  }
+}
+

@@ -19,6 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Button, Card } from '../../components/common';
 import {
   createFeedback,
@@ -34,6 +35,7 @@ import { formatRelativeTime } from '../../utils/helpers';
 export default function FeedbackScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { colors } = useTheme();
   
   const [rating, setRating] = useState(5);
   const [feedbackType, setFeedbackType] = useState<FeedbackType>('app_review');
@@ -117,7 +119,7 @@ export default function FeedbackScreen() {
             <Ionicons
               name={star <= rating ? 'star' : 'star-outline'}
               size={40}
-              color={star <= rating ? '#FFD700' : COLORS.textMuted}
+              color={star <= rating ? '#FFD700' : colors.textMuted}
             />
           </TouchableOpacity>
         ))}
@@ -138,11 +140,11 @@ export default function FeedbackScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return COLORS.warning;
-      case 'read': return COLORS.info;
-      case 'responded': return COLORS.success;
-      case 'resolved': return COLORS.primary;
-      default: return COLORS.textMuted;
+      case 'pending': return colors.warning;
+      case 'read': return colors.info;
+      case 'responded': return colors.success;
+      case 'resolved': return colors.primary;
+      default: return colors.textMuted;
     }
   };
 
@@ -151,14 +153,14 @@ export default function FeedbackScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Feedback & รีวิว</Text>
         <TouchableOpacity onPress={() => setShowHistory(!showHistory)}>
           <Ionicons 
             name={showHistory ? 'create-outline' : 'time-outline'} 
             size={24} 
-            color={COLORS.primary} 
+            color={colors.primary} 
           />
         </TouchableOpacity>
       </View>
@@ -171,7 +173,7 @@ export default function FeedbackScreen() {
             
             {myFeedback.length === 0 ? (
               <Card style={styles.emptyCard}>
-                <Ionicons name="chatbox-outline" size={48} color={COLORS.textMuted} />
+                <Ionicons name="chatbox-outline" size={48} color={colors.textMuted} />
                 <Text style={styles.emptyText}>ยังไม่มี feedback</Text>
               </Card>
             ) : (
@@ -184,7 +186,7 @@ export default function FeedbackScreen() {
                           key={star}
                           name={star <= item.rating ? 'star' : 'star-outline'}
                           size={16}
-                          color={star <= item.rating ? '#FFD700' : COLORS.textMuted}
+                          color={star <= item.rating ? '#FFD700' : colors.textMuted}
                         />
                       ))}
                     </View>
@@ -214,7 +216,7 @@ export default function FeedbackScreen() {
           <View>
             {!canSubmit ? (
               <Card style={styles.limitCard}>
-                <Ionicons name="time" size={32} color={COLORS.warning} />
+                <Ionicons name="time" size={32} color={colors.warning} />
                 <Text style={styles.limitText}>
                   คุณส่ง feedback ไปแล้ววันนี้{'\n'}กรุณารอพรุ่งนี้
                 </Text>
@@ -244,7 +246,7 @@ export default function FeedbackScreen() {
                         <Ionicons
                           name={type.icon as any}
                           size={20}
-                          color={feedbackType === type.value ? COLORS.white : COLORS.primary}
+                          color={feedbackType === type.value ? colors.white : colors.primary}
                         />
                         <Text
                           style={[
@@ -487,3 +489,4 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
 });
+

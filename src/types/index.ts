@@ -262,6 +262,7 @@ export type RootStackParamList = {
   Terms: undefined;
   Privacy: undefined;
   Verification: undefined; // ยืนยันตัวตนพยาบาล
+  UserProfile: { userId: string; userName?: string; userPhoto?: string }; // ดูโปรไฟล์คนอื่น
   AdminDashboard: undefined; // Admin Dashboard Screen
   AdminVerification: undefined; // Admin Verification Screen - ตรวจใบอนุญาต
   AdminReports: undefined; // Admin Reports Screen - ดูรายงาน

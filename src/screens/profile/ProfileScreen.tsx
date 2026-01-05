@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Button, Avatar, Card, Loading, ModalContainer, Input, Badge, Divider, ConfirmModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, POSITIONS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { getUserShiftContacts } from '../../services/jobService';
 import { getFavoritesCount } from '../../services/favoritesService';
 import { getUnreadNotificationsCount } from '../../services/notificationsService';
@@ -45,6 +46,7 @@ interface Props {
 export default function ProfileScreen({ navigation }: Props) {
   // Auth context
   const { user, isAuthenticated, logout, updateUser, isLoading: isAuthLoading, isAdmin } = useAuth();
+  const { colors, isDark } = useTheme();
   const nav = useNavigation<any>();
   const insets = useSafeAreaInsets();
 
@@ -237,7 +239,7 @@ export default function ProfileScreen({ navigation }: Props) {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={[COLORS.primary]}
+            colors={[colors.primary]}
           />
         }
       >
@@ -574,7 +576,7 @@ export default function ProfileScreen({ navigation }: Props) {
               value={editForm.bio}
               onChangeText={(text) => setEditForm({ ...editForm, bio: text })}
               placeholder="บอกเล่าเกี่ยวกับตัวคุณ ความเชี่ยวชาญ และสิ่งที่คุณมองหา..."
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={colors.textMuted}
               multiline={true}
               numberOfLines={4}
               textAlignVertical="top"
@@ -892,3 +894,4 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.border,
   },
 });
+

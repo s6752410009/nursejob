@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, SHADOWS, BORDER_RADIUS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Loading, EmptyState, Avatar } from '../../components/common';
 import { 
   getUserFavorites, 
@@ -36,6 +37,7 @@ const formatShiftRate = (rate?: number, type?: string): string => {
 export default function FavoritesScreen() {
   const navigation = useNavigation();
   const { user, requireAuth } = useAuth();
+  const { colors } = useTheme();
   const [favorites, setFavorites] = useState<Favorite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -137,17 +139,17 @@ export default function FavoritesScreen() {
             style={styles.removeButton}
             onPress={() => handleRemove(item)}
           >
-            <Ionicons name="heart" size={24} color={COLORS.error} />
+            <Ionicons name="heart" size={24} color={colors.error} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.cardBody}>
           <View style={styles.tag}>
-            <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
+            <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
             <Text style={styles.tagText}>{job.location?.province || 'ไม่ระบุ'}</Text>
           </View>
           <View style={styles.tag}>
-            <Ionicons name="briefcase-outline" size={14} color={COLORS.textSecondary} />
+            <Ionicons name="briefcase-outline" size={14} color={colors.textSecondary} />
             <Text style={styles.tagText}>{job.department}</Text>
           </View>
         </View>
@@ -195,7 +197,7 @@ export default function FavoritesScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={[COLORS.primary]}
+            colors={[colors.primary]}
           />
         }
         ListEmptyComponent={
@@ -337,3 +339,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

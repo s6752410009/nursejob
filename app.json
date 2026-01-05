@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "NurseJob",
-    "slug": "nurse-job-app",
+    "name": "NurseLink",
+    "slug": "nurse-link-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

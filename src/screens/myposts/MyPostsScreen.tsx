@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Loading, EmptyState, Button, Avatar } from '../../components/common';
 import CustomAlert, { AlertState, initialAlertState, createAlert } from '../../components/common/CustomAlert';
 import { getUserPosts, updateJobStatus, deleteJob, subscribeToUserPosts } from '../../services/jobService';
@@ -260,9 +261,9 @@ export default function MyPostsScreen() {
   // Render post item
   const renderPostItem = ({ item }: { item: JobPost }) => {
     const statusConfig = {
-      active: { label: 'กำลังเปิด', color: COLORS.success, bg: COLORS.successLight },
-      urgent: { label: 'ด่วน', color: COLORS.error, bg: COLORS.errorLight || '#FFEBEE' },
-      closed: { label: 'ปิดแล้ว', color: COLORS.textMuted, bg: COLORS.backgroundSecondary },
+      active: { label: 'กำลังเปิด', color: colors.success, bg: colors.successLight },
+      urgent: { label: 'ด่วน', color: colors.error, bg: colors.errorLight || '#FFEBEE' },
+      closed: { label: 'ปิดแล้ว', color: colors.textMuted, bg: colors.backgroundSecondary },
     };
 
     const status = statusConfig[item.status] || statusConfig.active;
@@ -288,20 +289,20 @@ export default function MyPostsScreen() {
         <View style={styles.postDetails}>
           <View style={styles.detailRow}>
             <View style={styles.detailItem}>
-              <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
+              <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
               <Text style={styles.detailText}>
                 {formatDate(item.shiftDate)}
               </Text>
             </View>
             <View style={styles.detailItem}>
-              <Ionicons name="time-outline" size={14} color={COLORS.textSecondary} />
+              <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
               <Text style={styles.detailText}>{item.shiftTime}</Text>
             </View>
           </View>
           
           <View style={styles.detailRow}>
             <View style={styles.detailItem}>
-              <Ionicons name="medical-outline" size={14} color={COLORS.textSecondary} />
+              <Ionicons name="medical-outline" size={14} color={colors.textSecondary} />
               <Text style={styles.detailText}>{item.department}</Text>
             </View>
             <View style={styles.detailItem}>
@@ -316,35 +317,65 @@ export default function MyPostsScreen() {
           </Text>
           <View style={styles.postStats}>
             {/* Days remaining */}
-            {item.expiresAt && item.status !== 'closed' && (() => {
+            {item.status !== 'closed' && (() => {
               const now = new Date();
-              const expiryDate = new Date(item.expiresAt);
+              let expiryDate: Date | null = null;
+              
+              // Try to get expiry date from various sources
+              if (item.expiresAt) {
+                if (item.expiresAt instanceof Date) {
+                  expiryDate = item.expiresAt;
+                } else if (typeof item.expiresAt === 'object' && item.expiresAt.toDate) {
+                  expiryDate = item.expiresAt.toDate();
+                } else if (typeof item.expiresAt === 'string' || typeof item.expiresAt === 'number') {
+                  expiryDate = new Date(item.expiresAt);
+                }
+              }
+              
+              // If no expiresAt, calculate from createdAt (30 days default)
+              if (!expiryDate && item.createdAt) {
+                let createdDate: Date;
+                if (item.createdAt instanceof Date) {
+                  createdDate = item.createdAt;
+                } else if (typeof item.createdAt === 'object' && item.createdAt.toDate) {
+                  createdDate = item.createdAt.toDate();
+                } else {
+                  createdDate = new Date(item.createdAt);
+                }
+                expiryDate = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+              }
+              
+              if (!expiryDate || isNaN(expiryDate.getTime())) {
+                return null;
+              }
+              
               const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              
               if (daysLeft <= 0) {
                 return (
                   <View style={[styles.statItem, { marginRight: 8 }]}>
-                    <Ionicons name="alert-circle" size={14} color={COLORS.error} />
-                    <Text style={[styles.statText, { color: COLORS.error }]}>หมดอายุแล้ว</Text>
+                    <Ionicons name="alert-circle" size={14} color={colors.error} />
+                    <Text style={[styles.statText, { color: colors.error }]}>หมดอายุแล้ว</Text>
                   </View>
                 );
               } else if (daysLeft <= 3) {
                 return (
                   <View style={[styles.statItem, { marginRight: 8 }]}>
-                    <Ionicons name="time" size={14} color={COLORS.warning} />
-                    <Text style={[styles.statText, { color: COLORS.warning }]}>เหลือ {daysLeft} วัน</Text>
+                    <Ionicons name="time" size={14} color={colors.warning} />
+                    <Text style={[styles.statText, { color: colors.warning }]}>เหลือ {daysLeft} วัน</Text>
                   </View>
                 );
               } else {
                 return (
                   <View style={[styles.statItem, { marginRight: 8 }]}>
-                    <Ionicons name="time-outline" size={14} color={COLORS.textMuted} />
+                    <Ionicons name="time-outline" size={14} color={colors.textMuted} />
                     <Text style={styles.statText}>เหลือ {daysLeft} วัน</Text>
                   </View>
                 );
               }
             })()}
             <View style={styles.statItem}>
-              <Ionicons name="eye-outline" size={14} color={COLORS.textMuted} />
+              <Ionicons name="eye-outline" size={14} color={colors.textMuted} />
               <Text style={styles.statText}>{item.viewsCount || 0}</Text>
             </View>
           </View>
@@ -353,7 +384,7 @@ export default function MyPostsScreen() {
         {/* Action hint */}
         <View style={styles.actionHint}>
           <Text style={styles.actionHintText}>แตะเพื่อจัดการ</Text>
-          <Ionicons name="chevron-forward" size={16} color={COLORS.primary} />
+          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
         </View>
       </TouchableOpacity>
     );
@@ -373,21 +404,21 @@ export default function MyPostsScreen() {
         style={[styles.statCard, statusFilter === 'active' && styles.statCardActive]}
         onPress={() => setStatusFilter('active')}
       >
-        <Text style={[styles.statNumber, { color: COLORS.success }]}>{stats.active}</Text>
+        <Text style={[styles.statNumber, { color: colors.success }]}>{stats.active}</Text>
         <Text style={styles.statLabel}>กำลังเปิด</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.statCard, statusFilter === 'urgent' && styles.statCardActive]}
         onPress={() => setStatusFilter('urgent')}
       >
-        <Text style={[styles.statNumber, { color: COLORS.error }]}>{stats.urgent}</Text>
+        <Text style={[styles.statNumber, { color: colors.error }]}>{stats.urgent}</Text>
         <Text style={styles.statLabel}>ด่วน</Text>
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.statCard, statusFilter === 'closed' && styles.statCardActive]}
         onPress={() => setStatusFilter('closed')}
       >
-        <Text style={[styles.statNumber, { color: COLORS.textMuted }]}>{stats.closed}</Text>
+        <Text style={[styles.statNumber, { color: colors.textMuted }]}>{stats.closed}</Text>
         <Text style={styles.statLabel}>ปิดแล้ว</Text>
       </TouchableOpacity>
     </View>
@@ -398,7 +429,7 @@ export default function MyPostsScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>ประกาศของฉัน</Text>
           <View style={{ width: 40 }} />
@@ -419,7 +450,7 @@ export default function MyPostsScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>ประกาศของฉัน</Text>
           <View style={{ width: 40 }} />
@@ -434,7 +465,7 @@ export default function MyPostsScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>ประกาศของฉัน</Text>
         <TouchableOpacity 
@@ -444,7 +475,7 @@ export default function MyPostsScreen() {
             (navigation as any).navigate('PostJob');
           }}
         >
-          <Ionicons name="add" size={24} color={COLORS.primary} />
+          <Ionicons name="add" size={24} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -502,16 +533,16 @@ export default function MyPostsScreen() {
                 <View style={styles.modalActions}>
                   {/* View Applicants */}
                   <TouchableOpacity style={styles.modalAction} onPress={handleViewApplicants}>
-                    <View style={[styles.modalActionIcon, { backgroundColor: COLORS.primaryLight }]}>
-                      <Ionicons name="people" size={22} color={COLORS.primary} />
+                    <View style={[styles.modalActionIcon, { backgroundColor: colors.primaryLight }]}>
+                      <Ionicons name="people" size={22} color={colors.primary} />
                     </View>
                     <Text style={styles.modalActionText}>ดูผู้สนใจ</Text>
                   </TouchableOpacity>
 
                   {/* Edit */}
                   <TouchableOpacity style={styles.modalAction} onPress={handleEditPost}>
-                    <View style={[styles.modalActionIcon, { backgroundColor: COLORS.infoLight || '#E3F2FD' }]}>
-                      <Ionicons name="create" size={22} color={COLORS.info} />
+                    <View style={[styles.modalActionIcon, { backgroundColor: colors.infoLight || '#E3F2FD' }]}>
+                      <Ionicons name="create" size={22} color={colors.info} />
                     </View>
                     <Text style={styles.modalActionText}>แก้ไข</Text>
                   </TouchableOpacity>
@@ -529,8 +560,8 @@ export default function MyPostsScreen() {
                   {/* Mark Urgent */}
                   {selectedPost.status !== 'urgent' && selectedPost.status !== 'closed' && (
                     <TouchableOpacity style={styles.modalAction} onPress={handleMarkUrgent}>
-                      <View style={[styles.modalActionIcon, { backgroundColor: COLORS.warningLight || '#FFF3E0' }]}>
-                        <Ionicons name="flash" size={22} color={COLORS.warning} />
+                      <View style={[styles.modalActionIcon, { backgroundColor: colors.warningLight || '#FFF3E0' }]}>
+                        <Ionicons name="flash" size={22} color={colors.warning} />
                       </View>
                       <Text style={styles.modalActionText}>ด่วน ฿49</Text>
                     </TouchableOpacity>
@@ -539,15 +570,15 @@ export default function MyPostsScreen() {
                   {/* Close/Reactivate */}
                   {selectedPost.status === 'closed' ? (
                     <TouchableOpacity style={styles.modalAction} onPress={handleReactivatePost}>
-                      <View style={[styles.modalActionIcon, { backgroundColor: COLORS.successLight }]}>
-                        <Ionicons name="refresh" size={22} color={COLORS.success} />
+                      <View style={[styles.modalActionIcon, { backgroundColor: colors.successLight }]}>
+                        <Ionicons name="refresh" size={22} color={colors.success} />
                       </View>
                       <Text style={styles.modalActionText}>เปิดใหม่</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity style={styles.modalAction} onPress={handleClosePost}>
-                      <View style={[styles.modalActionIcon, { backgroundColor: COLORS.backgroundSecondary }]}>
-                        <Ionicons name="close-circle" size={22} color={COLORS.textSecondary} />
+                      <View style={[styles.modalActionIcon, { backgroundColor: colors.backgroundSecondary }]}>
+                        <Ionicons name="close-circle" size={22} color={colors.textSecondary} />
                       </View>
                       <Text style={styles.modalActionText}>ปิดประกาศ</Text>
                     </TouchableOpacity>
@@ -555,10 +586,10 @@ export default function MyPostsScreen() {
 
                   {/* Delete */}
                   <TouchableOpacity style={styles.modalAction} onPress={handleDeletePost}>
-                    <View style={[styles.modalActionIcon, { backgroundColor: COLORS.errorLight || '#FFEBEE' }]}>
-                      <Ionicons name="trash" size={22} color={COLORS.error} />
+                    <View style={[styles.modalActionIcon, { backgroundColor: colors.errorLight || '#FFEBEE' }]}>
+                      <Ionicons name="trash" size={22} color={colors.error} />
                     </View>
-                    <Text style={[styles.modalActionText, { color: COLORS.error }]}>ลบถาวร</Text>
+                    <Text style={[styles.modalActionText, { color: colors.error }]}>ลบถาวร</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -844,3 +875,4 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
 });
+

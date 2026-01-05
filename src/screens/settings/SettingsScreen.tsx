@@ -20,7 +20,8 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
-import { deleteUserAccount } from '../../services/authService';
+import { useTheme, ThemeMode } from '../../context/ThemeContext';
+import { deleteUserAccount, updateUserPrivacy } from '../../services/authService';
 import { getUserSubscription, getSubscriptionStatusDisplay, upgradeToPremium } from '../../services/subscriptionService';
 import { Subscription, SUBSCRIPTION_PLANS } from '../../types';
 import { ConfirmModal, SuccessModal, ErrorModal } from '../../components/common';
@@ -64,6 +65,7 @@ const defaultSettings: Settings = {
 export default function SettingsScreen() {
   const navigation = useNavigation();
   const { user, logout } = useAuth();
+  const { themeMode, setThemeMode, colors, isDark } = useTheme();
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -77,6 +79,7 @@ export default function SettingsScreen() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showThemeModal, setShowThemeModal] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -119,12 +122,24 @@ export default function SettingsScreen() {
     saveSettings(newSettings);
   };
 
-  const updatePrivacy = (key: keyof Settings['privacy'], value: boolean) => {
+  const updatePrivacy = async (key: keyof Settings['privacy'], value: boolean) => {
     const newSettings = {
       ...settings,
       privacy: { ...settings.privacy, [key]: value },
     };
     saveSettings(newSettings);
+    
+    // บันทึกไป Firestore ด้วย
+    if (user?.uid) {
+      try {
+        await updateUserPrivacy(user.uid, {
+          profileVisible: newSettings.privacy.profileVisible,
+          showOnlineStatus: newSettings.privacy.showOnlineStatus,
+        });
+      } catch (error) {
+        console.error('Error saving privacy to Firestore:', error);
+      }
+    }
   };
 
   const handleLogout = () => {
@@ -169,7 +184,7 @@ export default function SettingsScreen() {
   };
 
   const SectionHeader = ({ title }: { title: string }) => (
-    <Text style={styles.sectionHeader}>{title}</Text>
+    <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{title}</Text>
   );
 
   const SettingRow = ({
@@ -192,49 +207,52 @@ export default function SettingsScreen() {
     destructive?: boolean;
   }) => (
     <TouchableOpacity
-      style={styles.row}
+      style={[styles.row, { backgroundColor: colors.surface, borderBottomColor: colors.borderLight }]}
       onPress={onPress}
       disabled={Boolean(!onPress && !onValueChange)}
       activeOpacity={onPress ? 0.7 : 1}
     >
-      <View style={[styles.rowIcon, destructive && styles.rowIconDestructive]}>
+      <View style={[
+        styles.rowIcon, 
+        { backgroundColor: destructive ? colors.errorLight : colors.primaryBackground },
+      ]}>
         <Ionicons
           name={icon as any}
           size={20}
-          color={destructive ? COLORS.error : COLORS.primary}
+          color={destructive ? colors.error : colors.primary}
         />
       </View>
       <View style={styles.rowContent}>
-        <Text style={[styles.rowTitle, destructive && styles.rowTitleDestructive]}>
+        <Text style={[styles.rowTitle, { color: destructive ? colors.error : colors.text }]}>
           {title}
         </Text>
-        {subtitle && <Text style={styles.rowSubtitle}>{subtitle}</Text>}
+        {subtitle && <Text style={[styles.rowSubtitle, { color: colors.textSecondary }]}>{subtitle}</Text>}
       </View>
       {onValueChange !== undefined && value !== undefined && (
         <Switch
           value={Boolean(value)}
           onValueChange={onValueChange}
-          trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
-          thumbColor={value ? COLORS.primary : COLORS.white}
+          trackColor={{ false: colors.border, true: colors.primaryLight }}
+          thumbColor={value ? colors.primary : colors.white}
         />
       )}
       {showArrow && (
-        <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
       )}
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* Header with Back Button */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <TouchableOpacity 
           style={styles.backButton} 
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>ตั้งค่า</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>ตั้งค่า</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -305,7 +323,7 @@ export default function SettingsScreen() {
 
         {/* Notifications */}
         <SectionHeader title="การแจ้งเตือน" />
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <SettingRow
             icon="notifications"
             title="การแจ้งเตือน Push"
@@ -345,7 +363,7 @@ export default function SettingsScreen() {
 
         {/* Privacy */}
         <SectionHeader title="ความเป็นส่วนตัว" />
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <SettingRow
             icon="eye"
             title="โปรไฟล์สาธารณะ"
@@ -362,9 +380,21 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* Theme */}
+        <SectionHeader title="ธีมและการแสดงผล" />
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <SettingRow
+            icon="color-palette"
+            title="ธีม"
+            subtitle={themeMode === 'light' ? 'สว่าง' : themeMode === 'dark' ? 'มืด' : 'ตามระบบ'}
+            onPress={() => setShowThemeModal(true)}
+            showArrow
+          />
+        </View>
+
         {/* Support */}
         <SectionHeader title="ช่วยเหลือและสนับสนุน" />
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <SettingRow
             icon="help-circle"
             title="คำถามที่พบบ่อย"
@@ -389,7 +419,7 @@ export default function SettingsScreen() {
 
         {/* Legal */}
         <SectionHeader title="ข้อมูลทางกฎหมาย" />
-        <View style={styles.section}>
+        <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <SettingRow
             icon="document"
             title="เงื่อนไขการใช้งาน"
@@ -408,7 +438,7 @@ export default function SettingsScreen() {
         {user && (
           <>
             <SectionHeader title="บัญชี" />
-            <View style={styles.section}>
+            <View style={[styles.section, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <SettingRow
                 icon="log-out"
                 title="ออกจากระบบ"
@@ -428,11 +458,99 @@ export default function SettingsScreen() {
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text style={styles.appName}>NurseJob</Text>
-          <Text style={styles.appVersion}>เวอร์ชัน 1.0.0</Text>
-          <Text style={styles.copyright}>© 2025 NurseJob Thailand</Text>
+          <Text style={[styles.appName, { color: colors.primary }]}>NurseLink</Text>
+          <Text style={[styles.appVersion, { color: colors.textSecondary }]}>เวอร์ชัน 1.0.0</Text>
+          <Text style={[styles.copyright, { color: colors.textMuted }]}>© 2025 NurseLink Thailand</Text>
         </View>
       </ScrollView>
+
+      {/* Theme Selection Modal */}
+      {showThemeModal && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.themeModal, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.themeModalTitle, { color: colors.text }]}>เลือกธีม</Text>
+            
+            <TouchableOpacity
+              style={[
+                styles.themeOption,
+                { backgroundColor: colors.background },
+                themeMode === 'light' && [styles.themeOptionSelected, { backgroundColor: colors.primaryBackground, borderColor: colors.primary }],
+              ]}
+              onPress={() => {
+                setThemeMode('light');
+                setShowThemeModal(false);
+              }}
+            >
+              <Ionicons name="sunny" size={24} color={themeMode === 'light' ? colors.primary : colors.textSecondary} />
+              <Text style={[
+                styles.themeOptionText,
+                { color: colors.text },
+                themeMode === 'light' && { color: colors.primary },
+              ]}>
+                สว่าง
+              </Text>
+              {themeMode === 'light' && (
+                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.themeOption,
+                { backgroundColor: colors.background },
+                themeMode === 'dark' && [styles.themeOptionSelected, { backgroundColor: colors.primaryBackground, borderColor: colors.primary }],
+              ]}
+              onPress={() => {
+                setThemeMode('dark');
+                setShowThemeModal(false);
+              }}
+            >
+              <Ionicons name="moon" size={24} color={themeMode === 'dark' ? colors.primary : colors.textSecondary} />
+              <Text style={[
+                styles.themeOptionText,
+                { color: colors.text },
+                themeMode === 'dark' && { color: colors.primary },
+              ]}>
+                มืด
+              </Text>
+              {themeMode === 'dark' && (
+                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.themeOption,
+                { backgroundColor: colors.background },
+                themeMode === 'system' && [styles.themeOptionSelected, { backgroundColor: colors.primaryBackground, borderColor: colors.primary }],
+              ]}
+              onPress={() => {
+                setThemeMode('system');
+                setShowThemeModal(false);
+              }}
+            >
+              <Ionicons name="phone-portrait" size={24} color={themeMode === 'system' ? colors.primary : colors.textSecondary} />
+              <Text style={[
+                styles.themeOptionText,
+                { color: colors.text },
+                themeMode === 'system' && { color: colors.primary },
+              ]}>
+                ตามระบบ
+              </Text>
+              {themeMode === 'system' && (
+                <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.themeModalClose}
+              onPress={() => setShowThemeModal(false)}
+            >
+              <Text style={[styles.themeModalCloseText, { color: colors.textSecondary }]}>ปิด</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Logout Confirm Modal */}
       <ConfirmModal
@@ -658,5 +776,66 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     fontWeight: '600',
     color: COLORS.text,
+  },
+  
+  // Theme Modal Styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  themeModal: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.lg,
+    width: '80%',
+    maxWidth: 320,
+    ...SHADOWS.medium,
+  },
+  themeModalTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontWeight: '700',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: SPACING.md,
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    marginBottom: SPACING.sm,
+    backgroundColor: COLORS.background,
+  },
+  themeOptionSelected: {
+    backgroundColor: COLORS.primaryBackground,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  themeOptionText: {
+    flex: 1,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text,
+    marginLeft: SPACING.md,
+  },
+  themeOptionTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  themeModalClose: {
+    marginTop: SPACING.md,
+    padding: SPACING.md,
+    alignItems: 'center',
+  },
+  themeModalCloseText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
   },
 });

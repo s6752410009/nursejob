@@ -78,14 +78,12 @@ export function subscribeToJobs(callback: (jobs: JobPost[]) => void): () => void
     
     console.log(`[subscribeToJobs] Got ${jobs.length} jobs from Firebase`);
     
-    // If no jobs found, return mock data for demo
-    if (jobs.length === 0) {
-      console.log('[subscribeToJobs] No jobs, returning mock data');
-      callback(getMockJobs());
-      return;
-    }
+    // รวม real data กับ mock data (แสดงทั้งสองอย่างเสมอ)
+    const mockJobs = getMockJobs();
+    // ไม่เพิ่ม mock ถ้ามี real jobs แล้ว (เพื่อไม่ให้ซ้ำ)
+    const allJobs = jobs.length > 0 ? [...jobs, ...mockJobs.slice(0, 3)] : mockJobs;
     
-    callback(jobs);
+    callback(allJobs);
   }, (error) => {
     console.error('Error subscribing to jobs:', error);
     // Return mock data on error

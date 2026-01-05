@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Loading, EmptyState } from '../../components/common';
 import {
   getUserNotifications,
@@ -47,18 +48,18 @@ const getNotificationIcon = (type: NotificationType): string => {
 
 const getNotificationColor = (type: NotificationType): string => {
   const colors: Record<NotificationType, string> = {
-    new_job: COLORS.primary,
-    application_sent: COLORS.info,
-    application_viewed: COLORS.secondary,
-    application_accepted: COLORS.success,
-    application_rejected: COLORS.error,
-    new_message: COLORS.primary,
-    new_applicant: COLORS.secondary,
-    job_expired: COLORS.warning,
-    profile_reminder: COLORS.info,
-    system: COLORS.textSecondary,
+    new_job: colors.primary,
+    application_sent: colors.info,
+    application_viewed: colors.secondary,
+    application_accepted: colors.success,
+    application_rejected: colors.error,
+    new_message: colors.primary,
+    new_applicant: colors.secondary,
+    job_expired: colors.warning,
+    profile_reminder: colors.info,
+    system: colors.textSecondary,
   };
-  return colors[type] || COLORS.primary;
+  return colors[type] || colors.primary;
 };
 
 export default function NotificationsScreen() {
@@ -167,7 +168,7 @@ export default function NotificationsScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>การแจ้งเตือน</Text>
           <View style={{ width: 80 }} />
@@ -225,7 +226,7 @@ export default function NotificationsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>การแจ้งเตือน</Text>
         {unreadCount > 0 ? (
@@ -246,7 +247,7 @@ export default function NotificationsScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={[COLORS.primary]}
+            colors={[colors.primary]}
           />
         }
         ListEmptyComponent={
@@ -345,3 +346,4 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 });
+

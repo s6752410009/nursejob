@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // Context
 import { useAuth } from '../context/AuthContext';
 import { ChatNotificationProvider, useChatNotification } from '../context/ChatNotificationContext';
+import { useTheme } from '../context/ThemeContext';
 
 // Types
 import { RootStackParamList, AuthStackParamList, MainTabParamList } from '../types';
@@ -31,6 +32,7 @@ import HomeScreen from '../screens/home/HomeScreen';
 import JobDetailScreen from '../screens/job/JobDetailScreen';
 import PostJobScreen from '../screens/job/PostJobScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import UserProfileScreen from '../screens/profile/UserProfileScreen';
 import { ChatListScreen, ChatRoomScreen } from '../screens/chat/ChatScreens';
 
 // New Feature Screens
@@ -101,23 +103,25 @@ interface TabIconProps {
 }
 
 function TabIcon({ focused, iconName, label, badgeCount }: TabIconProps) {
+  const { colors } = useTheme();
+  
   return (
     <View style={styles.tabIconContainer}>
       <View>
         <Ionicons
           name={iconName}
           size={24}
-          color={focused ? COLORS.primary : COLORS.textMuted}
+          color={focused ? colors.primary : colors.textMuted}
         />
         {badgeCount !== undefined && badgeCount > 0 && (
-          <View style={styles.tabBadge}>
+          <View style={[styles.tabBadge, { backgroundColor: colors.error }]}>
             <Text style={styles.tabBadgeText}>
               {badgeCount > 9 ? '9+' : badgeCount}
             </Text>
           </View>
         )}
       </View>
-      <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>
+      <Text style={[styles.tabLabel, { color: focused ? colors.primary : colors.textMuted }]}>
         {label}
       </Text>
     </View>
@@ -129,6 +133,7 @@ function TabIcon({ focused, iconName, label, badgeCount }: TabIconProps) {
 // ============================================
 function MainTabNavigator() {
   const { unreadCount } = useChatNotification();
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   
   return (
@@ -136,16 +141,16 @@ function MainTabNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: COLORS.surface,
+          backgroundColor: colors.surface,
           borderTopWidth: 1,
-          borderTopColor: COLORS.border,
+          borderTopColor: colors.border,
           height: 56 + insets.bottom,
           paddingBottom: insets.bottom,
           paddingTop: 4,
         },
         tabBarShowLabel: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
       }}
     >
       <Tab.Screen
@@ -235,6 +240,15 @@ function RootNavigator() {
       <RootStack.Screen 
         name="Settings" 
         component={SettingsScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+
+      {/* User Profile - ดูโปรไฟล์คนอื่น */}
+      <RootStack.Screen 
+        name="UserProfile" 
+        component={UserProfileScreen}
         options={{
           animation: 'slide_from_right',
         }}

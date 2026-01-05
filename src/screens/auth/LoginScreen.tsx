@@ -21,6 +21,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Button, Input, Divider, SuccessModal, ErrorModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { AuthStackParamList } from '../../types';
 import { validateAdminCredentials } from '../../services/authService';
 
@@ -66,6 +67,7 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
 
   // Auth context
   const { login, loginWithGoogle, loginAsAdmin, isLoading, error, clearError } = useAuth();
+  const { colors, isDark } = useTheme();
 
   // Google Auth Request
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
@@ -180,7 +182,7 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
           {/* Logo & Title */}
           <View style={styles.header}>
             <Text style={styles.logo}>👩‍⚕️</Text>
-            <Text style={styles.title}>NurseJob</Text>
+            <Text style={styles.title}>NurseLink</Text>
             <Text style={styles.subtitle}>แพลตฟอร์มหางานพยาบาล</Text>
           </View>
 
@@ -266,7 +268,7 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
               disabled={googleLoading || !request}
             >
               {googleLoading ? (
-                <ActivityIndicator color={COLORS.text} />
+                <ActivityIndicator color={colors.text} />
               ) : (
                 <>
                   <Text style={styles.googleIcon}>G</Text>
@@ -455,3 +457,4 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.md,
   },
 });
+

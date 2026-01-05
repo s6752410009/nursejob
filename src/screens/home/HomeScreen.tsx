@@ -24,6 +24,7 @@ import { Loading, EmptyState, ModalContainer, Chip, Button, Avatar } from '../..
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, PROVINCES, DEPARTMENTS, DISTRICTS_BY_PROVINCE } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { useTheme } from '../../context/ThemeContext';
 import { getJobs, searchJobs, subscribeToJobs, getUserPosts } from '../../services/jobService';
 import { subscribeToNotifications } from '../../services/notificationsService';
 import { subscribeToFavorites, toggleFavorite, Favorite } from '../../services/favoritesService';
@@ -307,6 +308,7 @@ export default function HomeScreen({ navigation }: Props) {
   const { user, requireAuth } = useAuth();
   const toast = useToast();
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
 
   // State
   const [jobs, setJobs] = useState<JobPost[]>([]);

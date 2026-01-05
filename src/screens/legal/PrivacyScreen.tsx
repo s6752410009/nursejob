@@ -167,7 +167,7 @@ export default function PrivacyScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>นโยบายความเป็นส่วนตัว</Text>
         <View style={{ width: 24 }} />
@@ -176,14 +176,14 @@ export default function PrivacyScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Last Updated */}
         <View style={styles.lastUpdated}>
-          <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
+          <Ionicons name="time-outline" size={16} color={colors.textMuted} />
           <Text style={styles.lastUpdatedText}>อัปเดตล่าสุด: 1 มกราคม 2568</Text>
         </View>
 
         {/* Introduction */}
         <View style={styles.intro}>
           <View style={styles.introIcon}>
-            <Ionicons name="shield-checkmark" size={32} color={COLORS.primary} />
+            <Ionicons name="shield-checkmark" size={32} color={colors.primary} />
           </View>
           <Text style={styles.introTitle}>ความเป็นส่วนตัวของคุณสำคัญสำหรับเรา</Text>
           <Text style={styles.introText}>
@@ -196,19 +196,19 @@ export default function PrivacyScreen() {
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>สรุปสั้นๆ</Text>
           <View style={styles.summaryItem}>
-            <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
             <Text style={styles.summaryText}>เราเก็บข้อมูลเท่าที่จำเป็นต่อการให้บริการ</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
             <Text style={styles.summaryText}>ข้อมูลของคุณได้รับการเข้ารหัสและปกป้อง</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
             <Text style={styles.summaryText}>เราไม่ขายข้อมูลของคุณให้บุคคลภายนอก</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Ionicons name="checkmark-circle" size={20} color={COLORS.success} />
+            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
             <Text style={styles.summaryText}>คุณสามารถลบบัญชีและข้อมูลได้ตลอดเวลา</Text>
           </View>
         </View>
@@ -238,13 +238,13 @@ export default function PrivacyScreen() {
         {/* Contact Card */}
         <TouchableOpacity style={styles.contactCard} onPress={handleContactDPO}>
           <View style={styles.contactIconContainer}>
-            <Ionicons name="mail" size={24} color={COLORS.white} />
+            <Ionicons name="mail" size={24} color={colors.white} />
           </View>
           <View style={styles.contactInfo}>
             <Text style={styles.contactTitle}>มีคำถามเกี่ยวกับความเป็นส่วนตัว?</Text>
             <Text style={styles.contactSubtitle}>ติดต่อเจ้าหน้าที่คุ้มครองข้อมูลของเรา</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
         </TouchableOpacity>
 
         {/* Footer */}
@@ -434,3 +434,4 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
 });
+

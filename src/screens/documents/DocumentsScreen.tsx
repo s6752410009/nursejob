@@ -21,6 +21,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Loading, EmptyState, Button } from '../../components/common';
 import {
   getUserDocuments,
@@ -215,7 +216,7 @@ export default function DocumentsScreen() {
           <Ionicons
             name={(typeInfo?.icon || 'document') as any}
             size={24}
-            color={COLORS.primary}
+            color={colors.primary}
           />
         </View>
         <View style={styles.documentInfo}>
@@ -226,7 +227,7 @@ export default function DocumentsScreen() {
           <View style={styles.documentStatus}>
             {item.isVerified ? (
               <View style={styles.verifiedBadge}>
-                <Ionicons name="checkmark-circle" size={14} color={COLORS.success} />
+                <Ionicons name="checkmark-circle" size={14} color={colors.success} />
                 <Text style={styles.verifiedText}>ยืนยันแล้ว</Text>
               </View>
             ) : (
@@ -239,7 +240,7 @@ export default function DocumentsScreen() {
           style={styles.deleteButton}
           onPress={() => handleDelete(item)}
         >
-          <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+          <Ionicons name="trash-outline" size={20} color={colors.error} />
         </TouchableOpacity>
       </View>
     );
@@ -249,7 +250,7 @@ export default function DocumentsScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>เอกสารของฉัน</Text>
         <TouchableOpacity
@@ -261,7 +262,7 @@ export default function DocumentsScreen() {
             <Text style={styles.addButtonText}>กำลังอัพโหลด...</Text>
           ) : (
             <>
-              <Ionicons name="add" size={20} color={COLORS.white} />
+              <Ionicons name="add" size={20} color={colors.white} />
               <Text style={styles.addButtonText}>เพิ่มเอกสาร</Text>
             </>
           )}
@@ -277,7 +278,7 @@ export default function DocumentsScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={[COLORS.primary]}
+            colors={[colors.primary]}
           />
         }
         ListEmptyComponent={
@@ -303,7 +304,7 @@ export default function DocumentsScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>เลือกประเภทเอกสาร</Text>
               <TouchableOpacity onPress={() => setShowTypeModal(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -315,7 +316,7 @@ export default function DocumentsScreen() {
                   onPress={() => handleSelectType(item.type)}
                 >
                   <View style={styles.typeIcon}>
-                    <Ionicons name={item.icon as any} size={28} color={COLORS.primary} />
+                    <Ionicons name={item.icon as any} size={28} color={colors.primary} />
                   </View>
                   <Text style={styles.typeLabel}>{getDocumentTypeLabel(item.type)}</Text>
                 </TouchableOpacity>
@@ -476,3 +477,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+

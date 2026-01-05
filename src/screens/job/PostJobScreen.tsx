@@ -19,6 +19,7 @@ import { Button, Input, Card, Chip, ModalContainer, PlaceAutocomplete, QuickPlac
 import CustomAlert, { AlertState, initialAlertState, createAlert } from '../../components/common/CustomAlert';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, DEPARTMENTS, PROVINCES, DISTRICTS_BY_PROVINCE } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { createJob, updateJob } from '../../services/jobService';
 import { canUserPostToday, incrementPostCount, getUserSubscription, getPostExpiryDate } from '../../services/subscriptionService';
 import { MainTabParamList, JobPost, SUBSCRIPTION_PLANS } from '../../types';
@@ -60,6 +61,7 @@ interface ShiftForm {
 // ============================================
 export default function PostJobScreen({ navigation, route }: Props) {
   const { user, isAuthenticated } = useAuth();
+  const { colors } = useTheme();
   
   // Edit mode
   const editJob = route?.params?.editJob;
@@ -450,7 +452,7 @@ export default function PostJobScreen({ navigation, route }: Props) {
               <Text style={styles.timePickerValue}>{formatTime(form.startTime)}</Text>
             </TouchableOpacity>
             
-            <Ionicons name="arrow-forward" size={20} color={COLORS.textMuted} />
+            <Ionicons name="arrow-forward" size={20} color={colors.textMuted} />
             
             <TouchableOpacity
               style={styles.timePickerButton}
@@ -593,7 +595,7 @@ export default function PostJobScreen({ navigation, route }: Props) {
         <Card style={{...styles.section, ...(form.isUrgent ? styles.urgentSection : {})}}>
           <View style={styles.urgentHeader}>
             <View style={styles.urgentTitleRow}>
-              <Ionicons name="flash" size={24} color={form.isUrgent ? '#FF6B6B' : COLORS.textMuted} />
+              <Ionicons name="flash" size={24} color={form.isUrgent ? '#FF6B6B' : colors.textMuted} />
               <View style={styles.urgentTitleContent}>
                 <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>ประกาศด่วน</Text>
                 <Text style={styles.urgentSubtitle}>แสดงโดดเด่นด้านบนสุดของหน้าแรก</Text>
@@ -1399,3 +1401,4 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
 });
+

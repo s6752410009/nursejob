@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
+import { useTheme } from '../../context/ThemeContext';
 
 interface FAQItem {
   id: string;
@@ -177,14 +178,16 @@ const FAQItemComponent = ({ item, isExpanded, onToggle }: {
   item: FAQItem;
   isExpanded: boolean;
   onToggle: () => void;
-}) => (
+}) => {
+  const { colors } = useTheme();
+  return (
   <View style={styles.faqItem}>
     <TouchableOpacity style={styles.faqQuestion} onPress={onToggle} activeOpacity={0.7}>
       <Text style={styles.faqQuestionText}>{item.question}</Text>
       <Ionicons
         name={isExpanded ? 'chevron-up' : 'chevron-down'}
         size={20}
-        color={COLORS.textSecondary}
+        color={colors.textSecondary}
       />
     </TouchableOpacity>
     {isExpanded && (
@@ -194,9 +197,11 @@ const FAQItemComponent = ({ item, isExpanded, onToggle }: {
     )}
   </View>
 );
+};
 
 export default function HelpScreen() {
   const navigation = useNavigation();
+  const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -228,7 +233,7 @@ export default function HelpScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>ช่วยเหลือ</Text>
         <View style={{ width: 24 }} />
@@ -237,17 +242,17 @@ export default function HelpScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Search */}
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color={COLORS.textMuted} />
+          <Ionicons name="search" size={20} color={colors.textMuted} />
           <TextInput
             style={styles.searchInput}
             placeholder="ค้นหาคำถาม..."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={colors.textMuted}
           />
           {searchQuery !== '' && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={COLORS.textMuted} />
+              <Ionicons name="close-circle" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -276,7 +281,7 @@ export default function HelpScreen() {
               <Ionicons
                 name={cat.icon}
                 size={16}
-                color={selectedCategory === cat.id ? COLORS.white : COLORS.textSecondary}
+                color={selectedCategory === cat.id ? colors.white : colors.textSecondary}
               />
               <Text style={[styles.categoryText, selectedCategory === cat.id && styles.categoryTextActive]}>
                 {cat.title}
@@ -291,7 +296,7 @@ export default function HelpScreen() {
           
           {filteredFAQs.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="search-outline" size={48} color={COLORS.textMuted} />
+              <Ionicons name="search-outline" size={48} color={colors.textMuted} />
               <Text style={styles.emptyText}>ไม่พบคำถามที่ตรงกับการค้นหา</Text>
             </View>
           ) : (
@@ -315,16 +320,16 @@ export default function HelpScreen() {
 
           <View style={styles.contactOptions}>
             <TouchableOpacity style={styles.contactCard} onPress={handleContactSupport}>
-              <View style={[styles.contactIcon, { backgroundColor: COLORS.primaryLight }]}>
-                <Ionicons name="mail-outline" size={24} color={COLORS.primary} />
+              <View style={[styles.contactIcon, { backgroundColor: colors.primaryLight }]}>
+                <Ionicons name="mail-outline" size={24} color={colors.primary} />
               </View>
               <Text style={styles.contactLabel}>อีเมล</Text>
               <Text style={styles.contactValue}>support@nursejob.th</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.contactCard} onPress={handleCall}>
-              <View style={[styles.contactIcon, { backgroundColor: COLORS.successLight }]}>
-                <Ionicons name="call-outline" size={24} color={COLORS.success} />
+              <View style={[styles.contactIcon, { backgroundColor: colors.successLight }]}>
+                <Ionicons name="call-outline" size={24} color={colors.success} />
               </View>
               <Text style={styles.contactLabel}>โทรศัพท์</Text>
               <Text style={styles.contactValue}>02-123-4567</Text>
@@ -340,7 +345,7 @@ export default function HelpScreen() {
           </View>
 
           <View style={styles.officeHours}>
-            <Ionicons name="time-outline" size={16} color={COLORS.textMuted} />
+            <Ionicons name="time-outline" size={16} color={colors.textMuted} />
             <Text style={styles.officeHoursText}>
               เวลาทำการ: จันทร์ - ศุกร์ 9:00 - 18:00 น.
             </Text>
@@ -355,27 +360,27 @@ export default function HelpScreen() {
             style={styles.quickLink}
             onPress={() => (navigation as any).navigate('Terms')}
           >
-            <Ionicons name="document-text-outline" size={20} color={COLORS.textSecondary} />
+            <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} />
             <Text style={styles.quickLinkText}>ข้อกำหนดการใช้งาน</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.quickLink}
             onPress={() => (navigation as any).navigate('Privacy')}
           >
-            <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.textSecondary} />
+            <Ionicons name="shield-checkmark-outline" size={20} color={colors.textSecondary} />
             <Text style={styles.quickLinkText}>นโยบายความเป็นส่วนตัว</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.quickLink}
             onPress={() => Linking.openURL('https://nursejob.th/about')}
           >
-            <Ionicons name="information-circle-outline" size={20} color={COLORS.textSecondary} />
+            <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
             <Text style={styles.quickLinkText}>เกี่ยวกับเรา</Text>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
@@ -572,3 +577,4 @@ const styles = StyleSheet.create({
     height: 40,
   },
 });
+

@@ -22,6 +22,7 @@ import { Button, Avatar, Badge, Card, ModalContainer, BackButton, ConfirmModal, 
 import ReportModal from '../../components/report/ReportModal';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { contactForShift, deleteJob, updateJob, incrementViewCount } from '../../services/jobService';
 import { getOrCreateConversation } from '../../services/chatService';
 import { JobPost, RootStackParamList } from '../../types';
@@ -75,6 +76,7 @@ const getShiftTimeLabel = (time: string): string => {
 export default function JobDetailScreen({ navigation, route }: Props) {
   const { job } = route.params;
   const { user, requireAuth, isAuthenticated } = useAuth();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   const [isContacting, setIsContacting] = useState(false);
@@ -305,7 +307,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
               </TouchableOpacity>
               {!isOwner && (
                 <TouchableOpacity style={styles.actionButton} onPress={handleReportJob}>
-                  <Ionicons name="flag-outline" size={20} color={COLORS.warning} />
+                  <Ionicons name="flag-outline" size={20} color={colors.warning} />
                 </TouchableOpacity>
               )}
             </View>
@@ -340,12 +342,12 @@ export default function JobDetailScreen({ navigation, route }: Props) {
         {/* Shift Details */}
         <Card style={styles.section}>
           <View style={styles.sectionTitleRow}>
-            <Ionicons name="document-text-outline" size={18} color={COLORS.primary} />
+            <Ionicons name="document-text-outline" size={18} color={colors.primary} />
             <Text style={styles.sectionTitle}>รายละเอียดงาน</Text>
           </View>
           
           <View style={styles.detailRow}>
-            <Ionicons name="calendar-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <Ionicons name="calendar-outline" size={20} color={colors.primary} style={styles.detailIcon} />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>วันที่</Text>
               <Text style={styles.detailValue}>{formatShiftDate(job.shiftDate)}</Text>
@@ -353,7 +355,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
           </View>
 
           <View style={styles.detailRow}>
-            <Ionicons name="time-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <Ionicons name="time-outline" size={20} color={colors.primary} style={styles.detailIcon} />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>เวลา</Text>
               <Text style={styles.detailValue}>{job.shiftTime}</Text>
@@ -361,7 +363,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
           </View>
 
           <View style={styles.detailRow}>
-            <Ionicons name="cash-outline" size={20} color={COLORS.success} style={styles.detailIcon} />
+            <Ionicons name="cash-outline" size={20} color={colors.success} style={styles.detailIcon} />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>ค่าตอบแทน</Text>
               <Text style={[styles.detailValue, styles.rateValue]}>
@@ -374,13 +376,13 @@ export default function JobDetailScreen({ navigation, route }: Props) {
         {/* Location */}
         <Card style={styles.section}>
           <View style={styles.sectionTitleRow}>
-            <Ionicons name="location-outline" size={18} color={COLORS.primary} />
+            <Ionicons name="location-outline" size={18} color={colors.primary} />
             <Text style={styles.sectionTitle}>สถานที่</Text>
           </View>
           
           {job.location?.hospital && (
             <View style={styles.detailRow}>
-              <Ionicons name="business-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+              <Ionicons name="business-outline" size={20} color={colors.primary} style={styles.detailIcon} />
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>โรงพยาบาล/สถานที่</Text>
                 <Text style={styles.detailValue}>{job.location.hospital}</Text>
@@ -389,7 +391,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
           )}
 
           <View style={styles.detailRow}>
-            <Ionicons name="map-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <Ionicons name="map-outline" size={20} color={colors.primary} style={styles.detailIcon} />
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>พื้นที่</Text>
               <Text style={styles.detailValue}>
@@ -401,7 +403,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
 
           {(job.location?.hospital || job.location?.address) && (
             <TouchableOpacity style={styles.mapButton} onPress={handleDirections}>
-              <Ionicons name="navigate-outline" size={16} color={COLORS.white} />
+              <Ionicons name="navigate-outline" size={16} color={colors.white} />
               <Text style={styles.mapButtonText}>ดูแผนที่</Text>
             </TouchableOpacity>
           )}
@@ -411,7 +413,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
         {job.description && isLoggedIn && (
           <Card style={styles.section}>
             <View style={styles.sectionTitleRow}>
-              <Ionicons name="create-outline" size={18} color={COLORS.primary} />
+              <Ionicons name="create-outline" size={18} color={colors.primary} />
               <Text style={styles.sectionTitle}>รายละเอียดเพิ่มเติม</Text>
             </View>
             <Text style={styles.description}>{job.description}</Text>
@@ -422,19 +424,19 @@ export default function JobDetailScreen({ navigation, route }: Props) {
         {isOwner && (
           <Card style={styles.ownerSection}>
             <View style={styles.sectionTitleRow}>
-              <Ionicons name="settings-outline" size={18} color={COLORS.primary} />
+              <Ionicons name="settings-outline" size={18} color={colors.primary} />
               <Text style={styles.sectionTitle}>จัดการประกาศ</Text>
             </View>
             <Text style={styles.ownerNote}>คุณเป็นเจ้าของประกาศนี้</Text>
             
             <View style={styles.ownerActions}>
               <TouchableOpacity style={styles.ownerButton} onPress={handleEdit}>
-                <Ionicons name="pencil-outline" size={20} color={COLORS.primary} />
+                <Ionicons name="pencil-outline" size={20} color={colors.primary} />
                 <Text style={styles.ownerButtonText}>แก้ไข</Text>
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.ownerButton} onPress={handleMarkAsFilled}>
-                <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.success} />
+                <Ionicons name="checkmark-circle-outline" size={20} color={colors.success} />
                 <Text style={styles.ownerButtonText}>ปิดรับ</Text>
               </TouchableOpacity>
               
@@ -442,7 +444,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
                 style={[styles.ownerButton, styles.deleteButton]} 
                 onPress={() => setShowDeleteModal(true)}
               >
-                <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+                <Ionicons name="trash-outline" size={20} color={colors.error} />
                 <Text style={[styles.ownerButtonText, styles.deleteButtonText]}>ลบ</Text>
               </TouchableOpacity>
             </View>
@@ -453,21 +455,21 @@ export default function JobDetailScreen({ navigation, route }: Props) {
         {isLoggedIn ? (
           <Card style={styles.section}>
             <View style={styles.sectionTitleRow}>
-              <Ionicons name="call-outline" size={18} color={COLORS.primary} />
+              <Ionicons name="call-outline" size={18} color={colors.primary} />
               <Text style={styles.sectionTitle}>ช่องทางติดต่อ</Text>
             </View>
             
             <View style={styles.contactButtons}>
               {job.contactPhone && (
                 <TouchableOpacity style={styles.contactButton} onPress={handleCall}>
-                  <Ionicons name="call" size={18} color={COLORS.primary} />
+                  <Ionicons name="call" size={18} color={colors.primary} />
                   <Text style={styles.contactText}>โทร {job.contactPhone}</Text>
                 </TouchableOpacity>
               )}
               
               {job.contactLine && (
                 <TouchableOpacity style={styles.contactButton} onPress={handleLine}>
-                  <Ionicons name="chatbubble-ellipses" size={18} color={COLORS.success} />
+                  <Ionicons name="chatbubble-ellipses" size={18} color={colors.success} />
                   <Text style={styles.contactText}>LINE: {job.contactLine}</Text>
                 </TouchableOpacity>
               )}
@@ -476,7 +478,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
         ) : (
           <Card style={styles.lockedSection}>
             <View style={styles.lockedContent}>
-              <Ionicons name="lock-closed" size={32} color={COLORS.textMuted} />
+              <Ionicons name="lock-closed" size={32} color={colors.textMuted} />
               <Text style={styles.lockedTitle}>เข้าสู่ระบบเพื่อดูข้อมูลติดต่อ</Text>
               <Text style={styles.lockedDescription}>
                 สมัครสมาชิกฟรี เพื่อดูรายละเอียดงานและติดต่อผู้โพสต์
@@ -493,7 +495,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
         {/* Views */}
         {job.viewsCount !== undefined && (
           <View style={styles.viewsRow}>
-            <Ionicons name="eye-outline" size={14} color={COLORS.textMuted} />
+            <Ionicons name="eye-outline" size={14} color={colors.textMuted} />
             <Text style={styles.viewsText}>{job.viewsCount} คนดู</Text>
           </View>
         )}
@@ -519,7 +521,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
               onPress={handleStartChat}
               disabled={isStartingChat}
             >
-              <Ionicons name="chatbubble-outline" size={22} color={COLORS.primary} />
+              <Ionicons name="chatbubble-outline" size={22} color={colors.primary} />
               <Text style={styles.chatButtonText}>
                 {isStartingChat ? 'กำลังเปิด...' : 'แชท'}
               </Text>
@@ -1055,3 +1057,4 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
   },
 });
+

@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Loading, EmptyState, Avatar, Button } from '../../components/common';
 import {
   getHospitalApplications,
@@ -40,11 +41,11 @@ const getStatusLabel = (status: ContactStatus): string => {
 
 const getStatusColor = (status: ContactStatus): string => {
   const colors: Record<ContactStatus, string> = {
-    interested: COLORS.warning,
-    confirmed: COLORS.success,
-    cancelled: COLORS.error,
+    interested: colors.warning,
+    confirmed: colors.success,
+    cancelled: colors.error,
   };
-  return colors[status] || COLORS.textSecondary;
+  return colors[status] || colors.textSecondary;
 };
 
 const statusOptions: { status: ContactStatus; label: string; icon: string }[] = [
@@ -205,20 +206,20 @@ ${contact.message ? `\n💬 ข้อความ:\n${contact.message}` : ''}`,
         {item.job && (
           <View style={styles.shiftInfo}>
             <View style={styles.shiftInfoItem}>
-              <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
+              <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
               <Text style={styles.shiftInfoText}>
                 {formatDate(item.job.shiftDate)}
               </Text>
             </View>
             <View style={styles.shiftInfoItem}>
-              <Ionicons name="time-outline" size={14} color={COLORS.textSecondary} />
+              <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
               <Text style={styles.shiftInfoText}>
                 {item.job.shiftTime}
               </Text>
             </View>
             <View style={styles.shiftInfoItem}>
-              <Ionicons name="cash-outline" size={14} color={COLORS.primary} />
-              <Text style={[styles.shiftInfoText, { color: COLORS.primary, fontWeight: '600' }]}>
+              <Ionicons name="cash-outline" size={14} color={colors.primary} />
+              <Text style={[styles.shiftInfoText, { color: colors.primary, fontWeight: '600' }]}>
                 ฿{item.job.shiftRate?.toLocaleString()}
               </Text>
             </View>
@@ -253,13 +254,13 @@ ${contact.message ? `\n💬 ข้อความ:\n${contact.message}` : ''}`,
         <View style={styles.infoRow}>
           {profile?.licenseNumber && (
             <View style={styles.infoItem}>
-              <Ionicons name="ribbon-outline" size={14} color={COLORS.success} />
+              <Ionicons name="ribbon-outline" size={14} color={colors.success} />
               <Text style={styles.infoText}>มีใบประกอบวิชาชีพ</Text>
             </View>
           )}
           {profile?.experience && profile.experience > 0 && (
             <View style={styles.infoItem}>
-              <Ionicons name="briefcase-outline" size={14} color={COLORS.textSecondary} />
+              <Ionicons name="briefcase-outline" size={14} color={colors.textSecondary} />
               <Text style={styles.infoText}>{profile.experience} ปี</Text>
             </View>
           )}
@@ -271,15 +272,15 @@ ${contact.message ? `\n💬 ข้อความ:\n${contact.message}` : ''}`,
             style={styles.actionButton}
             onPress={() => handleViewProfile(item)}
           >
-            <Ionicons name="person-outline" size={18} color={COLORS.primary} />
+            <Ionicons name="person-outline" size={18} color={colors.primary} />
             <Text style={styles.actionText}>ดูข้อมูล</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => handleCall(item.userPhone || profile?.phone)}
           >
-            <Ionicons name="call-outline" size={18} color={COLORS.success} />
-            <Text style={[styles.actionText, { color: COLORS.success }]}>โทร</Text>
+            <Ionicons name="call-outline" size={18} color={colors.success} />
+            <Text style={[styles.actionText, { color: colors.success }]}>โทร</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonPrimary]}
@@ -288,7 +289,7 @@ ${contact.message ? `\n💬 ข้อความ:\n${contact.message}` : ''}`,
               setShowStatusModal(true);
             }}
           >
-            <Ionicons name="create-outline" size={18} color={COLORS.white} />
+            <Ionicons name="create-outline" size={18} color={colors.white} />
             <Text style={[styles.actionText, styles.actionTextPrimary]}>อัพเดท</Text>
           </TouchableOpacity>
         </View>
@@ -347,7 +348,7 @@ ${contact.message ? `\n💬 ข้อความ:\n${contact.message}` : ''}`,
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={[COLORS.primary]}
+            colors={[colors.primary]}
           />
         }
         ListEmptyComponent={
@@ -395,7 +396,7 @@ ${contact.message ? `\n💬 ข้อความ:\n${contact.message}` : ''}`,
                   size={20}
                   color={
                     selectedContact?.status === option.status
-                      ? COLORS.white
+                      ? colors.white
                       : getStatusColor(option.status)
                   }
                 />
@@ -408,7 +409,7 @@ ${contact.message ? `\n💬 ข้อความ:\n${contact.message}` : ''}`,
                   {option.label}
                 </Text>
                 {selectedContact?.status === option.status && (
-                  <Ionicons name="checkmark" size={20} color={COLORS.white} />
+                  <Ionicons name="checkmark" size={20} color={colors.white} />
                 )}
               </TouchableOpacity>
             ))}
@@ -673,3 +674,4 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
+

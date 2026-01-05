@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { Card, Button, ModalContainer } from '../../components/common';
 import CustomAlert, { AlertState, initialAlertState, createAlert } from '../../components/common/CustomAlert';
 import { getUserSubscription, getSubscriptionStatusDisplay, canUseFreeUrgent } from '../../services/subscriptionService';
@@ -26,6 +27,7 @@ import { PRICING, SUBSCRIPTION_PLANS, Subscription } from '../../types';
 export default function ShopScreen() {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { colors } = useTheme();
   
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -105,7 +107,7 @@ export default function ShopScreen() {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>🛒 ร้านค้า</Text>
         <View style={{ width: 40 }} />
@@ -561,3 +563,4 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
 });
+

@@ -24,6 +24,7 @@ import { RouteProp } from '@react-navigation/native';
 import { Avatar, Loading, EmptyState, Card, ConfirmModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { 
   subscribeToConversations, 
   subscribeToMessages, 
@@ -92,7 +93,7 @@ function ToastNotification({ visible, senderName, message, onHide }: ToastNotifi
       ]}
     >
       <View style={styles.toastContent}>
-        <Ionicons name="chatbubble-ellipses" size={20} color={COLORS.primary} />
+        <Ionicons name="chatbubble-ellipses" size={20} color={colors.primary} />
         <View style={styles.toastTextContainer}>
           <Text style={styles.toastSender} numberOfLines={1}>{senderName}</Text>
           <Text style={styles.toastMessage} numberOfLines={2}>{message}</Text>
@@ -113,6 +114,7 @@ interface ChatListProps {
 
 export function ChatListScreen({ navigation }: ChatListProps) {
   const { user, isAuthenticated, requireAuth } = useAuth();
+  const { colors, isDark } = useTheme();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -252,13 +254,13 @@ export function ChatListScreen({ navigation }: ChatListProps) {
               style={[styles.actionButton, styles.hideButton]}
               onPress={() => handleHideConversation(item)}
             >
-              <Ionicons name="eye-off-outline" size={18} color={COLORS.textSecondary} />
+              <Ionicons name="eye-off-outline" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionButton, styles.deleteButton]}
               onPress={() => handleDeletePress(item)}
             >
-              <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+              <Ionicons name="trash-outline" size={18} color={colors.danger} />
             </TouchableOpacity>
           </View>
         </View>
@@ -274,13 +276,13 @@ export function ChatListScreen({ navigation }: ChatListProps) {
             style={[styles.actionButton, styles.hideButton]}
             onPress={() => handleHideConversation(item)}
           >
-            <Ionicons name="eye-off-outline" size={18} color={COLORS.textSecondary} />
+            <Ionicons name="eye-off-outline" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.deleteButton]}
             onPress={() => handleDeletePress(item)}
           >
-            <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+            <Ionicons name="trash-outline" size={18} color={colors.danger} />
           </TouchableOpacity>
         </View>
       </View>
@@ -345,6 +347,7 @@ interface ChatRoomProps {
 export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
   const { conversationId, recipientName, jobTitle } = route.params;
   const { user } = useAuth();
+  const { colors, isDark } = useTheme();
   const { setActiveConversationId } = useChatNotification();
   
   const [messages, setMessages] = useState<Message[]>([]);
@@ -645,7 +648,7 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
             {isImage && (item as any).imageUrl && (
               <TouchableOpacity onPress={() => openFile((item as any).imageUrl)}>
                 <View style={styles.imageContainer}>
-                  <Ionicons name="image" size={48} color={isOwn ? 'rgba(255,255,255,0.8)' : COLORS.primary} />
+                  <Ionicons name="image" size={48} color={isOwn ? 'rgba(255,255,255,0.8)' : colors.primary} />
                   <Text style={[styles.imageText, isOwn && { color: 'rgba(255,255,255,0.9)' }]}>
                     แตะเพื่อดูรูปภาพ
                   </Text>
@@ -657,9 +660,9 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
             {isDocument && (item as any).fileUrl && (
               <TouchableOpacity onPress={() => openFile((item as any).fileUrl)}>
                 <View style={styles.documentContainer}>
-                  <Ionicons name="document-attach" size={32} color={isOwn ? 'rgba(255,255,255,0.9)' : COLORS.primary} />
+                  <Ionicons name="document-attach" size={32} color={isOwn ? 'rgba(255,255,255,0.9)' : colors.primary} />
                   <View style={styles.documentDetails}>
-                    <Text style={[styles.documentFileName, isOwn && { color: COLORS.white }]} numberOfLines={1}>
+                    <Text style={[styles.documentFileName, isOwn && { color: colors.white }]} numberOfLines={1}>
                       {(item as any).fileName || 'เอกสาร'}
                     </Text>
                     <Text style={[styles.documentFileInfo, isOwn && { color: 'rgba(255,255,255,0.7)' }]}>
@@ -746,7 +749,7 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
               <Text style={styles.replyText} numberOfLines={1}>{replyTo.text}</Text>
             </View>
             <TouchableOpacity onPress={() => setReplyTo(null)}>
-              <Ionicons name="close" size={20} color={COLORS.textMuted} />
+              <Ionicons name="close" size={20} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
         )}
@@ -757,14 +760,14 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
             style={styles.attachButton}
             onPress={() => setShowAttachModal(true)}
           >
-            <Ionicons name="add-circle-outline" size={28} color={COLORS.primary} />
+            <Ionicons name="add-circle-outline" size={28} color={colors.primary} />
           </TouchableOpacity>
           <TextInput
             style={styles.textInput}
             value={inputText}
             onChangeText={setInputText}
             placeholder="พิมพ์ข้อความ..."
-            placeholderTextColor={COLORS.textMuted}
+            placeholderTextColor={colors.textMuted}
             multiline={true}
             maxLength={500}
           />
@@ -774,7 +777,7 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
             disabled={Boolean(!inputText.trim() || isSending)}
           >
             {isSending ? (
-              <ActivityIndicator size="small" color={COLORS.white} />
+              <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Text style={styles.sendIcon}>➤</Text>
             )}
@@ -844,26 +847,26 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
         >
           <View style={styles.messageMenuContainer}>
             <TouchableOpacity style={styles.menuItem} onPress={handleCopyMessage}>
-              <Ionicons name="copy-outline" size={20} color={COLORS.text} />
+              <Ionicons name="copy-outline" size={20} color={colors.text} />
               <Text style={styles.menuItemText}>คัดลอก</Text>
             </TouchableOpacity>
             
             <TouchableOpacity style={styles.menuItem} onPress={handleReply}>
-              <Ionicons name="arrow-undo-outline" size={20} color={COLORS.text} />
+              <Ionicons name="arrow-undo-outline" size={20} color={colors.text} />
               <Text style={styles.menuItemText}>ตอบกลับ</Text>
             </TouchableOpacity>
             
             {selectedMessage?.senderId === user?.uid && (
               <TouchableOpacity style={styles.menuItem} onPress={handleDeleteMessage}>
-                <Ionicons name="trash-outline" size={20} color={COLORS.danger} />
-                <Text style={[styles.menuItemText, { color: COLORS.danger }]}>ลบข้อความ</Text>
+                <Ionicons name="trash-outline" size={20} color={colors.danger} />
+                <Text style={[styles.menuItemText, { color: colors.danger }]}>ลบข้อความ</Text>
               </TouchableOpacity>
             )}
             
             {selectedMessage?.senderId !== user?.uid && (
               <TouchableOpacity style={styles.menuItem} onPress={handleReportMessage}>
-                <Ionicons name="flag-outline" size={20} color={COLORS.warning} />
-                <Text style={[styles.menuItemText, { color: COLORS.warning }]}>รายงาน</Text>
+                <Ionicons name="flag-outline" size={20} color={colors.warning} />
+                <Text style={[styles.menuItemText, { color: colors.warning }]}>รายงาน</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -887,7 +890,7 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
               value={reportReason}
               onChangeText={setReportReason}
               placeholder="เหตุผลในการรายงาน..."
-              placeholderTextColor={COLORS.textMuted}
+              placeholderTextColor={colors.textMuted}
               multiline
               numberOfLines={4}
             />
@@ -925,13 +928,13 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
             <View style={styles.documentsHeader}>
               <Text style={styles.documentsTitle}>เอกสารของคุณ</Text>
               <TouchableOpacity onPress={() => setShowDocumentsModal(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
+                <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
             
             {savedDocuments.length === 0 ? (
               <View style={styles.emptyDocuments}>
-                <Ionicons name="document-outline" size={48} color={COLORS.textMuted} />
+                <Ionicons name="document-outline" size={48} color={colors.textMuted} />
                 <Text style={styles.emptyDocumentsText}>ไม่มีเอกสาร</Text>
                 <Text style={styles.emptyDocumentsSubtext}>คุณยังไม่มีเอกสารที่บันทึกไว้</Text>
               </View>
@@ -949,14 +952,14 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
                       <Ionicons 
                         name={item.type === 'license' ? 'ribbon' : item.type === 'resume' ? 'document-text' : 'document'} 
                         size={24} 
-                        color={COLORS.primary} 
+                        color={colors.primary} 
                       />
                     </View>
                     <View style={styles.documentItemInfo}>
                       <Text style={styles.documentItemName} numberOfLines={1}>{item.name}</Text>
                       <Text style={styles.documentItemType}>{item.type}</Text>
                     </View>
-                    <Ionicons name="send" size={20} color={COLORS.primary} />
+                    <Ionicons name="send" size={20} color={colors.primary} />
                   </TouchableOpacity>
                 )}
               />
@@ -969,7 +972,7 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
       {isSendingFile && (
         <View style={styles.sendingOverlay}>
           <View style={styles.sendingContainer}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+            <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.sendingText}>กำลังส่งไฟล์...</Text>
           </View>
         </View>
@@ -1616,3 +1619,4 @@ const styles = StyleSheet.create({
 });
 
 export default { ChatListScreen, ChatRoomScreen };
+

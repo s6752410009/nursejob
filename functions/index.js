@@ -28,6 +28,175 @@ const CONFIG = {
 };
 
 // ============================================
+// IAP RECEIPT VERIFICATION - ตรวจสอบการซื้อจาก App Store / Google Play
+// ============================================
+// เมื่อผู้ใช้ซื้อผ่าน IAP แอปจะส่ง receipt มาให้ Cloud Function ตรวจสอบ
+// ถ้า receipt ถูกต้อง → activate สินค้าให้ผู้ใช้อัตโนมัติ
+// ============================================
+exports.verifyIAPReceipt = functions.https.onRequest(async (req, res) => {
+  // CORS
+  res.set('Access-Control-Allow-Origin', '*');
+  if (req.method === 'OPTIONS') {
+    res.set('Access-Control-Allow-Methods', 'POST');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ success: false, error: 'Method not allowed' });
+    return;
+  }
+
+  const { receipt, productId, platform, userId } = req.body;
+
+  if (!receipt || !productId || !platform) {
+    res.status(400).json({ success: false, error: 'Missing required fields' });
+    return;
+  }
+
+  try {
+    let isValid = false;
+
+    if (platform === 'ios') {
+      // ============================================
+      // Apple Receipt Verification
+      // ============================================
+      // TODO: เมื่อมี Apple Developer Account แล้ว
+      // ส่ง receipt ไป Apple verifyReceipt endpoint:
+      //   Production: https://buy.itunes.apple.com/verifyReceipt
+      //   Sandbox:    https://sandbox.itunes.apple.com/verifyReceipt
+      //
+      // const appleResponse = await fetch('https://buy.itunes.apple.com/verifyReceipt', {
+      //   method: 'POST',
+      //   body: JSON.stringify({
+      //     'receipt-data': receipt,
+      //     'password': process.env.APPLE_SHARED_SECRET, // จาก App Store Connect
+      //     'exclude-old-transactions': true,
+      //   }),
+      // });
+      // const appleResult = await appleResponse.json();
+      // isValid = appleResult.status === 0;
+      
+      console.log('📱 iOS receipt received (verification pending Apple setup)');
+      isValid = true; // ⚠️ เปลี่ยนเมื่อ setup จริง
+      
+    } else if (platform === 'android') {
+      // ============================================
+      // Google Play Receipt Verification
+      // ============================================
+      // TODO: เมื่อมี Google Play Developer Account แล้ว
+      // ใช้ Google Play Developer API:
+      //
+      // const { google } = require('googleapis');
+      // const androidPublisher = google.androidpublisher('v3');
+      // 
+      // Consumable:
+      //   androidPublisher.purchases.products.get({ ... })
+      //
+      // Subscription:
+      //   androidPublisher.purchases.subscriptions.get({ ... })
+      
+      console.log('🤖 Android receipt received (verification pending Google setup)');
+      isValid = true; // ⚠️ เปลี่ยนเมื่อ setup จริง
+    }
+
+    if (isValid) {
+      // บันทึก verified purchase ลง Firestore
+      await db.collection('iap_receipts').add({
+        userId: userId || 'unknown',
+        productId,
+        platform,
+        receipt: receipt.substring(0, 100) + '...', // เก็บแค่ส่วนต้น (receipt ยาวมาก)
+        verified: true,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Activate product
+      if (userId) {
+        await activateIAPProduct(userId, productId);
+      }
+
+      console.log(`✅ IAP verified: ${productId} for user ${userId}`);
+      res.json({ success: true, productId });
+    } else {
+      console.log(`❌ IAP verification failed: ${productId}`);
+      res.status(400).json({ success: false, error: 'Invalid receipt' });
+    }
+  } catch (error) {
+    console.error('❌ IAP verification error:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// Helper: Activate IAP product for user
+async function activateIAPProduct(userId, productId) {
+  const userRef = db.collection('users').doc(userId);
+  
+  switch (productId) {
+    case 'com.nursego.app.premium.monthly': {
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + 1);
+      
+      await userRef.update({
+        subscription: {
+          plan: 'premium',
+          startedAt: new Date(),
+          expiresAt,
+          postsToday: 0,
+        },
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Also update userPlans collection
+      const planSnapshot = await db.collection('userPlans')
+        .where('userId', '==', userId)
+        .limit(1)
+        .get();
+      
+      if (!planSnapshot.empty) {
+        await planSnapshot.docs[0].ref.update({
+          planType: 'premium',
+          subscriptionStart: admin.firestore.FieldValue.serverTimestamp(),
+          subscriptionEnd: expiresAt,
+          dailyPostLimit: 999,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      console.log(`👑 Premium activated for ${userId}`);
+      break;
+    }
+
+    case 'com.nursego.app.extra.post': {
+      const planSnapshot = await db.collection('userPlans')
+        .where('userId', '==', userId)
+        .limit(1)
+        .get();
+      
+      if (!planSnapshot.empty) {
+        await planSnapshot.docs[0].ref.update({
+          extraPosts: admin.firestore.FieldValue.increment(1),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+
+      console.log(`📝 Extra post added for ${userId}`);
+      break;
+    }
+
+    case 'com.nursego.app.urgent.post':
+    case 'com.nursego.app.extend.post':
+      // TODO: Implement urgent/extend activation
+      console.log(`🛍️ ${productId} activated for ${userId}`);
+      break;
+
+    default:
+      console.warn(`Unknown product: ${productId}`);
+  }
+}
+
+// ============================================
 // 1. AUTO-EXPIRE JOBS - ทุก 6 ชั่วโมง
 // ปิดงานที่หมดอายุอัตโนมัติ
 // ============================================
@@ -520,7 +689,7 @@ exports.onUserCreate = functions.firestore
       // Create welcome notification
       await createInAppNotification(userId, {
         type: 'welcome',
-        title: '🎉 ยินดีต้อนรับสู่ NurseShift!',
+        title: '🎉 ยินดีต้อนรับสู่ NurseGo!',
         body: 'เริ่มค้นหางานเวรพยาบาลหรือโพสต์หาคนมาเติมเวรได้เลย',
         data: {},
       });

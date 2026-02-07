@@ -182,7 +182,7 @@ export default function LoginScreen({ navigation, onGuestLogin }: Props) {
           {/* Logo & Title */}
           <View style={styles.header}>
             <Text style={styles.logo}>👩‍⚕️</Text>
-            <Text style={styles.title}>NurseLink</Text>
+            <Text style={styles.title}>NurseGo</Text>
             <Text style={styles.subtitle}>แพลตฟอร์มหางานพยาบาล</Text>
           </View>
 

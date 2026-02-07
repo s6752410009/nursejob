@@ -1,6 +1,6 @@
 {
   "name": "functions",
-  "description": "Cloud Functions for NurseShift",
+  "description": "Cloud Functions for NurseGo",
   "scripts": {
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",

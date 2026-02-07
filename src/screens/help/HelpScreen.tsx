@@ -45,8 +45,8 @@ const FAQ_DATA: FAQItem[] = [
   {
     id: '1',
     category: 'general',
-    question: 'NurseJob คืออะไร?',
-    answer: 'NurseJob เป็นแพลตฟอร์มหางานสำหรับพยาบาลและบุคลากรทางการแพทย์ ที่ช่วยเชื่อมต่อระหว่างพยาบาลที่กำลังหางานกับโรงพยาบาลและสถานพยาบาลที่ต้องการบุคลากร',
+    question: 'NurseGo คืออะไร?',
+    answer: 'NurseGo เป็นแพลตฟอร์มหางานสำหรับพยาบาลและบุคลากรทางการแพทย์ ที่ช่วยเชื่อมต่อระหว่างพยาบาลที่กำลังหางานกับโรงพยาบาลและสถานพยาบาลที่ต้องการบุคลากร',
   },
   {
     id: '2',
@@ -58,7 +58,7 @@ const FAQ_DATA: FAQItem[] = [
     id: '3',
     category: 'general',
     question: 'รองรับการใช้งานบนอุปกรณ์อะไรบ้าง?',
-    answer: 'แอป NurseJob รองรับทั้ง iOS และ Android รวมถึงสามารถใช้งานผ่านเว็บบราวเซอร์ได้ด้วย',
+    answer: 'แอป NurseGo รองรับทั้ง iOS และ Android รวมถึงสามารถใช้งานผ่านเว็บบราวเซอร์ได้ด้วย',
   },
 
   // Account
@@ -104,7 +104,7 @@ const FAQ_DATA: FAQItem[] = [
     id: '10',
     category: 'jobs',
     question: 'งานที่แสดงมาจากไหน?',
-    answer: 'งานทั้งหมดลงประกาศโดยโรงพยาบาลและสถานพยาบาลที่ผ่านการยืนยันตัวตนกับ NurseJob เรามีทีมงานตรวจสอบความถูกต้องของข้อมูลอยู่เสมอ',
+    answer: 'งานทั้งหมดลงประกาศโดยโรงพยาบาลและสถานพยาบาลที่ผ่านการยืนยันตัวตนกับ NurseGo เรามีทีมงานตรวจสอบความถูกต้องของข้อมูลอยู่เสมอ',
   },
 
   // Applications
@@ -217,7 +217,7 @@ export default function HelpScreen() {
   });
 
   const handleContactSupport = () => {
-    Linking.openURL('mailto:support@nursejob.th?subject=ขอความช่วยเหลือ');
+    Linking.openURL('mailto:support@nursego.app?subject=ขอความช่วยเหลือ');
   };
 
   const handleCall = () => {
@@ -225,7 +225,7 @@ export default function HelpScreen() {
   };
 
   const handleLineOA = () => {
-    Linking.openURL('https://line.me/R/ti/p/@nursejob');
+    Linking.openURL('https://line.me/R/ti/p/@nursego');
   };
 
   return (
@@ -324,7 +324,7 @@ export default function HelpScreen() {
                 <Ionicons name="mail-outline" size={24} color={colors.primary} />
               </View>
               <Text style={styles.contactLabel}>อีเมล</Text>
-              <Text style={styles.contactValue}>support@nursejob.th</Text>
+              <Text style={styles.contactValue}>support@nursego.app</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.contactCard} onPress={handleCall}>
@@ -340,7 +340,7 @@ export default function HelpScreen() {
                 <Ionicons name="chatbubble-outline" size={24} color="#00B900" />
               </View>
               <Text style={styles.contactLabel}>Line OA</Text>
-              <Text style={styles.contactValue}>@nursejob</Text>
+              <Text style={styles.contactValue}>@nursego</Text>
             </TouchableOpacity>
           </View>
 
@@ -376,7 +376,7 @@ export default function HelpScreen() {
 
           <TouchableOpacity
             style={styles.quickLink}
-            onPress={() => Linking.openURL('https://nursejob.th/about')}
+            onPress={() => Linking.openURL('https://nursego.app/about')}
           >
             <Ionicons name="information-circle-outline" size={20} color={colors.textSecondary} />
             <Text style={styles.quickLinkText}>เกี่ยวกับเรา</Text>

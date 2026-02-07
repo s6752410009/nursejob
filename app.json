@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "NurseLink",
-    "slug": "nurse-link-app",
+    "name": "NurseGo",
+    "slug": "nurse-go-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,14 +16,14 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nursejob.app"
+      "bundleIdentifier": "com.nursego.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4A90D9"
       },
-      "package": "com.nursejob.app"
+      "package": "com.nursego.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -32,6 +32,7 @@
       "expo-web-browser"
     ],
     "extra": {
+      "longdoApiKey": "42cbc4a02c0bc712bafa5e0b44ae2cd7",
       "eas": {
         "projectId": "ab76f7f0-0e2f-4976-83ab-a7204452425f"
       }

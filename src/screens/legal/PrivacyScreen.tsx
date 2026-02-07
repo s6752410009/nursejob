@@ -148,10 +148,10 @@ const PRIVACY_SECTIONS: Section[] = [
       'หากมีคำถามเกี่ยวกับนโยบายความเป็นส่วนตัวหรือต้องการใช้สิทธิ์ของคุณ โปรดติดต่อ:',
     ],
     bullets: [
-      'อีเมล: privacy@nursejob.th',
+      'อีเมล: privacy@nursego.app',
       'โทรศัพท์: 02-123-4567',
-      'ที่อยู่: 123 อาคาร NurseJob, ถนนสุขุมวิท, กรุงเทพฯ 10110',
-      'เจ้าหน้าที่คุ้มครองข้อมูล: dpo@nursejob.th',
+      'ที่อยู่: 123 อาคาร NurseGo, ถนนสุขุมวิท, กรุงเทพฯ 10110',
+      'เจ้าหน้าที่คุ้มครองข้อมูล: dpo@nursego.app',
     ],
   },
 ];
@@ -161,7 +161,7 @@ export default function PrivacyScreen() {
   const { colors } = useTheme();
 
   const handleContactDPO = () => {
-    Linking.openURL('mailto:privacy@nursejob.th?subject=คำถามเกี่ยวกับความเป็นส่วนตัว');
+    Linking.openURL('mailto:privacy@nursego.app?subject=คำถามเกี่ยวกับความเป็นส่วนตัว');
   };
 
   return (
@@ -189,7 +189,7 @@ export default function PrivacyScreen() {
           </View>
           <Text style={styles.introTitle}>ความเป็นส่วนตัวของคุณสำคัญสำหรับเรา</Text>
           <Text style={styles.introText}>
-            NurseJob มุ่งมั่นปกป้องข้อมูลส่วนบุคคลของคุณ นโยบายนี้อธิบายวิธีที่เราเก็บรวบรวม 
+            NurseGo มุ่งมั่นปกป้องข้อมูลส่วนบุคคลของคุณ นโยบายนี้อธิบายวิธีที่เราเก็บรวบรวม 
             ใช้ และปกป้องข้อมูลของคุณตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)
           </Text>
         </View>
@@ -252,7 +252,7 @@ export default function PrivacyScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            © 2568 NurseJob. สงวนลิขสิทธิ์.
+            © 2568 NurseGo. สงวนลิขสิทธิ์.
           </Text>
           <Text style={styles.footerSubtext}>
             นโยบายนี้เป็นไปตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562

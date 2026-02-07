@@ -23,7 +23,7 @@ import ReportModal from '../../components/report/ReportModal';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { contactForShift, deleteJob, updateJob, incrementViewCount } from '../../services/jobService';
+import { contactForShift, deleteJob, updateJob, incrementViewCount, getShiftContacts, updateJobStatus } from '../../services/jobService';
 import { getOrCreateConversation } from '../../services/chatService';
 import { JobPost, RootStackParamList } from '../../types';
 import { formatDate, formatRelativeTime, callPhone, openLine, openMapsDirections } from '../../utils/helpers';
@@ -90,6 +90,13 @@ export default function JobDetailScreen({ navigation, route }: Props) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isStartingChat, setIsStartingChat] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  
+  // New states for improved flow
+  const [applicantsCount, setApplicantsCount] = useState(0);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [showContactSuccessModal, setShowContactSuccessModal] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [jobStatus, setJobStatus] = useState(job.status);
 
   // Check if user is logged in
   const isLoggedIn = isAuthenticated && user;
@@ -103,6 +110,21 @@ export default function JobDetailScreen({ navigation, route }: Props) {
       incrementViewCount(job.id);
     }
   }, [job?.id, isOwner]);
+
+  // Load applicants count for owner
+  useEffect(() => {
+    const loadApplicantsCount = async () => {
+      if (isOwner && job?.id) {
+        try {
+          const contacts = await getShiftContacts(job.id);
+          setApplicantsCount(contacts.length);
+        } catch (error) {
+          console.error('Error loading applicants count:', error);
+        }
+      }
+    };
+    loadApplicantsCount();
+  }, [isOwner, job?.id]);
 
   // Handle contact poster
   const handleContact = () => {
@@ -129,16 +151,44 @@ export default function JobDetailScreen({ navigation, route }: Props) {
       );
       setShowContactModal(false);
       setHasContacted(true);
-      Alert.alert(
-        'แสดงความสนใจแล้ว! 📞',
-        'ระบบบันทึกความสนใจของคุณแล้ว\nกรุณาติดต่อผู้โพสต์โดยตรง',
-        [{ text: 'ตกลง' }]
-      );
+      // Show success modal with contact options
+      setShowContactSuccessModal(true);
     } catch (error: any) {
       Alert.alert('เกิดข้อผิดพลาด', error.message || 'กรุณาลองใหม่');
     } finally {
       setIsContacting(false);
     }
+  };
+
+  // Handle close job (for owner)
+  const handleCloseJob = async () => {
+    setIsClosing(true);
+    try {
+      await updateJobStatus(job.id, 'closed');
+      setJobStatus('closed');
+      setShowCloseModal(false);
+      Alert.alert('สำเร็จ', 'ปิดรับสมัครเรียบร้อยแล้ว');
+    } catch (error: any) {
+      Alert.alert('เกิดข้อผิดพลาด', error.message || 'กรุณาลองใหม่');
+    } finally {
+      setIsClosing(false);
+    }
+  };
+
+  // Handle reopen job (for owner)
+  const handleReopenJob = async () => {
+    try {
+      await updateJobStatus(job.id, 'active');
+      setJobStatus('active');
+      Alert.alert('สำเร็จ', 'เปิดรับสมัครอีกครั้งแล้ว');
+    } catch (error: any) {
+      Alert.alert('เกิดข้อผิดพลาด', error.message || 'กรุณาลองใหม่');
+    }
+  };
+
+  // Navigate to applicants screen
+  const handleViewApplicants = () => {
+    (navigation as any).navigate('Applicants');
   };
 
   // Handle call
@@ -192,7 +242,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
       const rateText = formatShiftRate(job.shiftRate, job.rateType);
       const dateText = formatShiftDate(job.shiftDate);
       await Share.share({
-        message: `${job.title}\nวันที่: ${dateText}\nเวลา: ${job.shiftTime}\nค่าตอบแทน: ${rateText}\nสถานที่: ${job.location?.hospital || job.location?.province}\n\nดูรายละเอียดที่ NurseShift App`,
+        message: `${job.title}\nวันที่: ${dateText}\nเวลา: ${job.shiftTime}\nค่าตอบแทน: ${rateText}\nสถานที่: ${job.location?.hospital || job.location?.province}\n\nดูรายละเอียดที่ NurseGo App`,
         title: job.title,
       });
     } catch (error) {
@@ -538,19 +588,52 @@ export default function JobDetailScreen({ navigation, route }: Props) {
         )}
         
         {isOwner && (
-          <View style={styles.bottomButtons}>
-            <Button
-              title="แก้ไข"
-              variant="outline"
-              onPress={handleEdit}
-              style={{ flex: 1, marginRight: SPACING.sm }}
-            />
-            <Button
-              title="ลบประกาศ"
-              variant="danger"
-              onPress={() => setShowDeleteModal(true)}
-              style={{ flex: 1 }}
-            />
+          <View style={styles.ownerBottomButtons}>
+            {/* View Applicants */}
+            <TouchableOpacity
+              style={styles.applicantsButton}
+              onPress={handleViewApplicants}
+            >
+              <Ionicons name="people-outline" size={20} color={colors.primary} />
+              <Text style={[styles.applicantsButtonText, { color: colors.primary }]}>
+                ผู้สนใจ ({applicantsCount})
+              </Text>
+            </TouchableOpacity>
+            
+            {/* Close/Reopen or Edit */}
+            {jobStatus === 'closed' ? (
+              <Button
+                title="เปิดรับสมัครอีกครั้ง"
+                variant="outline"
+                onPress={handleReopenJob}
+                style={{ flex: 1, marginRight: SPACING.sm }}
+              />
+            ) : (
+              <Button
+                title="ปิดรับสมัคร"
+                variant="secondary"
+                onPress={() => setShowCloseModal(true)}
+                style={{ flex: 1, marginRight: SPACING.sm }}
+              />
+            )}
+            
+            {/* More Options */}
+            <TouchableOpacity
+              style={styles.moreButton}
+              onPress={() => {
+                Alert.alert(
+                  'ตัวเลือก',
+                  '',
+                  [
+                    { text: 'แก้ไขประกาศ', onPress: handleEdit },
+                    { text: 'ลบประกาศ', onPress: () => setShowDeleteModal(true), style: 'destructive' },
+                    { text: 'ยกเลิก', style: 'cancel' },
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="ellipsis-horizontal" size={24} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -640,6 +723,83 @@ export default function JobDetailScreen({ navigation, route }: Props) {
           reporterEmail={user.email || ''}
         />
       )}
+
+      {/* Contact Success Modal - แสดงหลังกดสนใจสำเร็จ */}
+      <ModalContainer
+        visible={showContactSuccessModal}
+        onClose={() => setShowContactSuccessModal(false)}
+        title="✅ บันทึกความสนใจแล้ว!"
+      >
+        <View style={styles.modalContent}>
+          <Text style={styles.successIcon}>🎉</Text>
+          <Text style={styles.modalTitle}>เยี่ยมมาก!</Text>
+          <Text style={styles.modalSubtitle}>
+            ระบบบันทึกความสนใจของคุณแล้ว{'\n'}
+            ติดต่อผู้โพสต์ได้เลย
+          </Text>
+          
+          <View style={styles.contactOptionsContainer}>
+            {job.contactPhone && (
+              <TouchableOpacity 
+                style={[styles.contactOptionButton, { backgroundColor: colors.success }]}
+                onPress={() => {
+                  setShowContactSuccessModal(false);
+                  callPhone(job.contactPhone!);
+                }}
+              >
+                <Ionicons name="call" size={24} color="#FFFFFF" />
+                <Text style={styles.contactOptionText}>โทรเลย</Text>
+                <Text style={styles.contactOptionSubtext}>{job.contactPhone}</Text>
+              </TouchableOpacity>
+            )}
+            
+            {job.contactLine && (
+              <TouchableOpacity 
+                style={[styles.contactOptionButton, { backgroundColor: '#00B900' }]}
+                onPress={() => {
+                  setShowContactSuccessModal(false);
+                  openLine(job.contactLine!);
+                }}
+              >
+                <Ionicons name="chatbubble-ellipses" size={24} color="#FFFFFF" />
+                <Text style={styles.contactOptionText}>LINE</Text>
+                <Text style={styles.contactOptionSubtext}>{job.contactLine}</Text>
+              </TouchableOpacity>
+            )}
+            
+            <TouchableOpacity 
+              style={[styles.contactOptionButton, { backgroundColor: colors.primary }]}
+              onPress={() => {
+                setShowContactSuccessModal(false);
+                handleStartChat();
+              }}
+            >
+              <Ionicons name="chatbubbles" size={24} color="#FFFFFF" />
+              <Text style={styles.contactOptionText}>แชทในแอพ</Text>
+              <Text style={styles.contactOptionSubtext}>ส่งข้อความ</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <Button
+            title="ปิด"
+            variant="outline"
+            onPress={() => setShowContactSuccessModal(false)}
+            style={{ marginTop: SPACING.md }}
+          />
+        </View>
+      </ModalContainer>
+
+      {/* Close Job Modal - สำหรับปิดรับสมัคร */}
+      <ConfirmModal
+        visible={showCloseModal}
+        title="ปิดรับสมัคร"
+        message={`คุณต้องการปิดรับสมัครประกาศ "${job.title}" หรือไม่?\n\nประกาศจะไม่แสดงในหน้าแรกอีกต่อไป แต่คุณยังสามารถเปิดรับสมัครอีกครั้งได้`}
+        confirmText={isClosing ? 'กำลังปิด...' : 'ปิดรับสมัคร'}
+        cancelText="ยกเลิก"
+        onConfirm={handleCloseJob}
+        onCancel={() => setShowCloseModal(false)}
+        type="warning"
+      />
     </SafeAreaView>
   );
 }
@@ -1055,6 +1215,65 @@ const styles = StyleSheet.create({
   reportButtons: {
     flexDirection: 'row',
     marginTop: SPACING.md,
+  },
+  
+  // Owner Bottom Buttons
+  ownerBottomButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: SPACING.sm,
+  },
+  applicantsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  applicantsButtonText: {
+    marginLeft: SPACING.xs,
+    fontWeight: '600',
+    fontSize: FONT_SIZES.sm,
+  },
+  moreButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  // Contact Success Modal
+  successIcon: {
+    fontSize: 60,
+    marginBottom: SPACING.md,
+  },
+  contactOptionsContainer: {
+    width: '100%',
+    marginTop: SPACING.lg,
+    gap: SPACING.sm,
+  },
+  contactOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    gap: SPACING.sm,
+  },
+  contactOptionText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: FONT_SIZES.md,
+    flex: 1,
+  },
+  contactOptionSubtext: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: FONT_SIZES.sm,
   },
 });
 

@@ -233,6 +233,7 @@ export interface JobFilters {
   district?: string;
   department?: string;
   urgentOnly?: boolean;
+  verifiedOnly?: boolean; // กรองเฉพาะงานจากพยาบาลยืนยันแล้ว
   sortBy?: 'latest' | 'night' | 'morning' | 'nearest' | 'highestPay';
   minRate?: number;
   maxRate?: number;

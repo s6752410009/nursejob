@@ -1,7 +1,7 @@
 // ============================================
-// NURSELINK APP - Production Ready Entry Point
+// NURSEGO APP - Production Ready Entry Point
 // ============================================
-// This is the main entry file for the NurseLink application
+// This is the main entry file for the NurseGo application
 // A platform for nurses to find healthcare job opportunities in Thailand
 // ============================================
 

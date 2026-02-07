@@ -411,8 +411,8 @@ export default function SettingsScreen() {
           <SettingRow
             icon="mail"
             title="ติดต่อเรา"
-            subtitle="support@nursejob.th"
-            onPress={() => Linking.openURL('mailto:support@nursejob.th')}
+            subtitle="support@nursego.app"
+            onPress={() => Linking.openURL('mailto:support@nursego.app')}
             showArrow
           />
         </View>
@@ -458,9 +458,9 @@ export default function SettingsScreen() {
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text style={[styles.appName, { color: colors.primary }]}>NurseLink</Text>
+          <Text style={[styles.appName, { color: colors.primary }]}>NurseGo</Text>
           <Text style={[styles.appVersion, { color: colors.textSecondary }]}>เวอร์ชัน 1.0.0</Text>
-          <Text style={[styles.copyright, { color: colors.textMuted }]}>© 2025 NurseLink Thailand</Text>
+          <Text style={[styles.copyright, { color: colors.textMuted }]}>© 2025 NurseGo Thailand</Text>
         </View>
       </ScrollView>
 

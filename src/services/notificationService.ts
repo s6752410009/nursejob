@@ -54,7 +54,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   try {
     // Get Expo push token
     const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: 'nursejob-th', // Your Expo project ID
+      projectId: 'nursejob-th', // Firebase/Expo project ID (NurseGo)
     });
     token = tokenData.data;
     console.log('Push token:', token);

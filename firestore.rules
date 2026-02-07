@@ -28,8 +28,8 @@ service cloud.firestore {
 
     // Jobs/Shifts collection
     match /shifts/{jobId} {
-      // Anyone can read active jobs
-      allow read: if true;
+      // เฉพาะผู้ล็อกอินเท่านั้นถึงอ่านงานได้
+      allow read: if isSignedIn();
       
       // Only signed-in users can create
       allow create: if isSignedIn();
@@ -66,10 +66,24 @@ service cloud.firestore {
         request.auth.uid in resource.data.participants;
     }
 
-    // Messages
+    // Messages (top-level — ถ้าใช้ subcollection ให้ดู conversations rule)
     match /messages/{messageId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid ||
+        request.auth.uid in resource.data.participants
+      );
       allow create: if isSignedIn();
+      allow update: if isSignedIn() && 
+        resource.data.senderId == request.auth.uid;
+    }
+
+    // Messages subcollection ภายใน conversations
+    match /conversations/{conversationId}/messages/{messageId} {
+      allow read: if isSignedIn() && 
+        request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+      allow create: if isSignedIn() && 
+        request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
       allow update: if isSignedIn() && 
         resource.data.senderId == request.auth.uid;
     }
@@ -123,6 +137,64 @@ service cloud.firestore {
     match /hospitals/{hospitalId} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // ===== User Plans (Subscription) =====
+    match /userPlans/{planId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isSignedIn();
+      allow update: if isAdmin(); // เฉพาะ admin เปลี่ยน plan ได้ (ป้องกัน self-upgrade)
+      allow delete: if isAdmin();
+    }
+
+    // ===== Purchases =====
+    match /purchases/{purchaseId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isSignedIn();
+      allow update: if isAdmin(); // เฉพาะ admin confirm payment
+      allow delete: if isAdmin();
+    }
+
+    // ===== Verifications =====
+    match /verifications/{verificationId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isSignedIn();
+      allow update: if isAdmin(); // admin approve/reject
+      allow delete: if isAdmin();
+    }
+
+    // ===== Reports =====
+    match /reports/{reportId} {
+      allow read: if isSignedIn() && (
+        resource.data.reporterId == request.auth.uid || isAdmin()
+      );
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ===== Feedback =====
+    match /feedback/{feedbackId} {
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isSignedIn();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ===== IAP Receipts =====
+    match /iap_receipts/{receiptId} {
+      allow read: if isAdmin();
+      allow create: if false; // เฉพาะ Cloud Function เท่านั้นที่สร้างได้
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }

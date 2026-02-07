@@ -24,14 +24,14 @@ const db = getFirestore(app);
 // Test Users Data
 const testUsers = [
   {
-    email: 'testuser1@nurseshift.com',
+    email: 'testuser1@nursego.app',
     password: 'Test@1234',
     displayName: 'ทดสอบ ผู้ใช้หนึ่ง',
     username: 'testuser1',
     phone: '0812345671',
   },
   {
-    email: 'testuser2@nurseshift.com',
+    email: 'testuser2@nursego.app',
     password: 'Test@1234',
     displayName: 'ทดสอบ ผู้ใช้สอง',
     username: 'testuser2',
@@ -88,7 +88,7 @@ async function createTestUser(userData) {
 
 async function main() {
   console.log('========================================');
-  console.log('🔧 สร้างบัญชี Test Users สำหรับ NurseShift');
+  console.log('🔧 สร้างบัญชี Test Users สำหรับ NurseGo');
   console.log('========================================');
   
   let successCount = 0;
@@ -104,11 +104,11 @@ async function main() {
   
   console.log('📋 รายละเอียด Test Accounts:');
   console.log('-----------------------------------');
-  console.log('1. Email: testuser1@nurseshift.com');
+  console.log('1. Email: testuser1@nursego.app');
   console.log('   Password: Test@1234');
   console.log('   Role: ผู้ใช้งานทั่วไป');
   console.log('');
-  console.log('2. Email: testuser2@nurseshift.com');
+  console.log('2. Email: testuser2@nursego.app');
   console.log('   Password: Test@1234');
   console.log('   Role: ผู้ใช้งานทั่วไป');
   console.log('-----------------------------------\n');

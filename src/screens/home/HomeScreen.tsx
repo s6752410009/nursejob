@@ -325,6 +325,7 @@ export default function HomeScreen({ navigation }: Props) {
     district: '',
     department: '',
     urgentOnly: false,
+    verifiedOnly: false,
     sortBy: 'latest',
   });
 
@@ -440,6 +441,9 @@ export default function HomeScreen({ navigation }: Props) {
       if (filters.urgentOnly === true) {
         filteredJobs = filteredJobs.filter(job => job.status === 'urgent');
       }
+      if (filters.verifiedOnly === true) {
+        filteredJobs = filteredJobs.filter(job => job.posterVerified === true);
+      }
       if (filters.minRate && filters.minRate > 0) {
         filteredJobs = filteredJobs.filter(job => job.shiftRate >= filters.minRate!);
       }
@@ -536,6 +540,7 @@ export default function HomeScreen({ navigation }: Props) {
       district: '',
       department: '',
       urgentOnly: false,
+      verifiedOnly: false,
       sortBy: 'latest',
       minRate: undefined,
       maxRate: undefined,
@@ -549,6 +554,7 @@ export default function HomeScreen({ navigation }: Props) {
     if (filters.district) count++;
     if (filters.department) count++;
     if (filters.urgentOnly) count++;
+    if (filters.verifiedOnly) count++;
     if (filters.minRate || filters.maxRate) count++;
     return count;
   }, [filters]);
@@ -589,6 +595,11 @@ export default function HomeScreen({ navigation }: Props) {
           label="🔥 ด่วน"
           selected={filters.urgentOnly}
           onPress={() => setFilters({ ...filters, urgentOnly: !filters.urgentOnly })}
+        />
+        <Chip
+          label="✓ พยาบาลยืนยัน"
+          selected={filters.verifiedOnly}
+          onPress={() => setFilters({ ...filters, verifiedOnly: !filters.verifiedOnly })}
         />
         <Chip
           label="🌙 เวรดึก"
@@ -893,7 +904,7 @@ function FilterModal({ visible, onClose, filters, setFilters, onApply, onClear }
           </View>
         </View>
 
-        {/* Urgent Only */}
+        {/* Urgent Only & Verified Only */}
         <View style={styles.filterSection}>
           <Text style={styles.filterLabel}>ประเภท</Text>
           <View style={styles.filterOptions}>
@@ -901,6 +912,11 @@ function FilterModal({ visible, onClose, filters, setFilters, onApply, onClear }
               label="ด่วนเท่านั้น"
               selected={filters.urgentOnly || false}
               onPress={() => setFilters({ ...filters, urgentOnly: !filters.urgentOnly })}
+            />
+            <Chip
+              label="✓ พยาบาลยืนยัน"
+              selected={filters.verifiedOnly || false}
+              onPress={() => setFilters({ ...filters, verifiedOnly: !filters.verifiedOnly })}
             />
           </View>
         </View>

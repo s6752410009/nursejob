@@ -43,6 +43,7 @@ interface Props {
 
 export default function VerificationScreen({ navigation }: Props) {
   const { user } = useAuth();
+  const { colors } = useTheme();
   
   // State
   const [isLoading, setIsLoading] = useState(true);

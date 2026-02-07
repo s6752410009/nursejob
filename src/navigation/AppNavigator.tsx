@@ -15,6 +15,9 @@ import { useAuth } from '../context/AuthContext';
 import { ChatNotificationProvider, useChatNotification } from '../context/ChatNotificationContext';
 import { useTheme } from '../context/ThemeContext';
 
+// Components
+import { ErrorBoundary } from '../components/common';
+
 // Types
 import { RootStackParamList, AuthStackParamList, MainTabParamList } from '../types';
 
@@ -426,11 +429,13 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
-      <ChatNotificationProvider navigation={navigationRef.current}>
-        <RootNavigator />
-      </ChatNotificationProvider>
-    </NavigationContainer>
+    <ErrorBoundary>
+      <NavigationContainer ref={navigationRef}>
+        <ChatNotificationProvider navigation={navigationRef.current}>
+          <RootNavigator />
+        </ChatNotificationProvider>
+      </NavigationContainer>
+    </ErrorBoundary>
   );
 }
 

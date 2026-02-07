@@ -2,7 +2,7 @@
 // AUTH CONTEXT - Production Ready
 // ============================================
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
@@ -83,41 +83,77 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // ✅ Refs to prevent race conditions and memory leaks
+  const isMountedRef = useRef(true);
+  const profileFetchInProgressRef = useRef(false);
+
   // Listen for auth state changes
   useEffect(() => {
+    // Mark as mounted
+    isMountedRef.current = true;
+
     const unsubscribe = subscribeToAuthChanges(async (firebaseUser) => {
+      // ⚠️ Skip if component is unmounted
+      if (!isMountedRef.current) return;
+
       // Check if this is an admin session (don't override with Firebase state)
       const isAdminSession = await AsyncStorage.getItem('isAdminSession');
       
       if (isAdminSession === 'true') {
         // Admin session - don't change user state from Firebase listener
-        setIsInitialized(true);
+        if (isMountedRef.current) {
+          setIsInitialized(true);
+        }
         return;
       }
       
       if (firebaseUser) {
         try {
+          // ✅ Prevent multiple simultaneous profile fetches
+          if (profileFetchInProgressRef.current) {
+            console.log('Profile fetch already in progress, skipping duplicate');
+            return;
+          }
+          
+          profileFetchInProgressRef.current = true;
           const profile = await getUserProfile(firebaseUser.uid);
-          setUser(profile);
-          // Cache user data
-          if (profile) {
-            await AsyncStorage.setItem('user', JSON.stringify(profile));
+          
+          // ⚠️ Only update state if still mounted
+          if (isMountedRef.current) {
+            setUser(profile);
+            // Cache user data
+            if (profile) {
+              await AsyncStorage.setItem('user', JSON.stringify(profile));
+            }
           }
         } catch (err) {
           console.error('Error fetching user profile:', err);
-          setUser(null);
+          if (isMountedRef.current) {
+            setUser(null);
+          }
+        } finally {
+          profileFetchInProgressRef.current = false;
         }
       } else {
-        setUser(null);
-        await AsyncStorage.removeItem('user');
+        if (isMountedRef.current) {
+          setUser(null);
+          await AsyncStorage.removeItem('user');
+        }
       }
-      setIsInitialized(true);
+      
+      if (isMountedRef.current) {
+        setIsInitialized(true);
+      }
     });
 
     // Try to restore cached user on app start
     loadCachedUser();
 
-    return () => unsubscribe();
+    // ✅ Cleanup: mark as unmounted and prevent state updates
+    return () => {
+      isMountedRef.current = false;
+      unsubscribe();
+    };
   }, []);
 
   // Load cached user for faster startup
@@ -143,20 +179,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       let email = emailOrUsername;
       
-      // Check if it's admin credentials first
-      const adminCredential = validateAdminCredentials(emailOrUsername, password);
-      if (adminCredential) {
+      // ✅ Validate admin credentials (await the async function)
+      const isAdminCredentials = await validateAdminCredentials(emailOrUsername, password);
+      if (isAdminCredentials) {
         // Login as admin
         const profile = await loginAsAdminService(emailOrUsername, password);
         await AsyncStorage.setItem('user', JSON.stringify(profile));
         await AsyncStorage.setItem('isAdminSession', 'true');
-        setUser(profile);
-        setIsInitialized(true);
-        setShowLoginModal(false);
+        // ⚠️ Only update state if still mounted
+        if (isMountedRef.current) {
+          setUser(profile);
+          setIsInitialized(true);
+          setShowLoginModal(false);
+        }
         if (pendingAction) {
           setTimeout(() => {
-            pendingAction();
-            setPendingAction(null);
+            if (isMountedRef.current) {
+              pendingAction();
+              setPendingAction(null);
+            }
           }, 100);
         }
         return;
@@ -179,25 +220,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Save to AsyncStorage first
       await AsyncStorage.setItem('user', JSON.stringify(profile));
-      // Then update state - this will trigger re-render and navigation
-      setUser(profile);
-      setIsInitialized(true);
-      setShowLoginModal(false);
+      // ⚠️ Only update state if still mounted
+      if (isMountedRef.current) {
+        setUser(profile);
+        setIsInitialized(true);
+        setShowLoginModal(false);
+      }
       // Execute pending action after login
       if (pendingAction) {
         setTimeout(() => {
-          pendingAction();
-          setPendingAction(null);
+          if (isMountedRef.current) {
+            pendingAction();
+            setPendingAction(null);
+          }
         }, 100);
       }
     } catch (err: any) {
       // If error message is already in Thai (from authService), use it directly
       const isThai = /[\u0E00-\u0E7F]/.test(err.message || '');
       const errorMessage = isThai ? err.message : getErrorMessage(err);
-      setError(errorMessage);
+      if (isMountedRef.current) {
+        setError(errorMessage);
+      }
       throw new Error(errorMessage);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -209,23 +258,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const profile = await loginWithGoogleService(idToken);
       // Save to AsyncStorage first
       await AsyncStorage.setItem('user', JSON.stringify(profile));
-      // Then update state
-      setUser(profile);
-      setIsInitialized(true);
-      setShowLoginModal(false);
+      // ⚠️ Only update state if still mounted
+      if (isMountedRef.current) {
+        setUser(profile);
+        setIsInitialized(true);
+        setShowLoginModal(false);
+      }
       // Execute pending action after login
       if (pendingAction) {
         setTimeout(() => {
-          pendingAction();
-          setPendingAction(null);
+          if (isMountedRef.current) {
+            pendingAction();
+            setPendingAction(null);
+          }
         }, 100);
       }
     } catch (err: any) {
       const errorMessage = getErrorMessage(err);
-      setError(errorMessage);
+      if (isMountedRef.current) {
+        setError(errorMessage);
+      }
       throw new Error(errorMessage);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -238,23 +295,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Save to AsyncStorage first
       await AsyncStorage.setItem('user', JSON.stringify(profile));
       await AsyncStorage.setItem('isAdminSession', 'true');
-      // Then update state - this will trigger re-render and navigation
-      setUser(profile);
-      setIsInitialized(true);
-      setShowLoginModal(false);
+      // ⚠️ Only update state if still mounted
+      if (isMountedRef.current) {
+        setUser(profile);
+        setIsInitialized(true);
+        setShowLoginModal(false);
+      }
       // Execute pending action after login
       if (pendingAction) {
         setTimeout(() => {
-          pendingAction();
-          setPendingAction(null);
+          if (isMountedRef.current) {
+            pendingAction();
+            setPendingAction(null);
+          }
         }, 100);
       }
     } catch (err: any) {
       const errorMessage = getErrorMessage(err);
-      setError(errorMessage);
+      if (isMountedRef.current) {
+        setError(errorMessage);
+      }
       throw new Error(errorMessage);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -267,25 +332,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Save to AsyncStorage first
       await AsyncStorage.setItem('user', JSON.stringify(profile));
       await AsyncStorage.setItem('isPhoneSession', 'true');
-      // Then update state - this will trigger re-render and navigation
-      setUser(profile);
-      setIsInitialized(true);
-      setShowLoginModal(false);
+      // ⚠️ Only update state if still mounted
+      if (isMountedRef.current) {
+        setUser(profile);
+        setIsInitialized(true);
+        setShowLoginModal(false);
+      }
       // Execute pending action after login
       if (pendingAction) {
         setTimeout(() => {
-          pendingAction();
-          setPendingAction(null);
+          if (isMountedRef.current) {
+            pendingAction();
+            setPendingAction(null);
+          }
         }, 100);
       }
     } catch (err: any) {
       // Use error message directly if it's in Thai
       const isThai = /[\u0E00-\u0E7F]/.test(err.message || '');
       const errorMessage = isThai ? err.message : getErrorMessage(err);
-      setError(errorMessage);
+      if (isMountedRef.current) {
+        setError(errorMessage);
+      }
       throw new Error(errorMessage);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -304,24 +377,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const profile = await registerUser(email, password, displayName, role, username, phone);
       // Save to AsyncStorage first
       await AsyncStorage.setItem('user', JSON.stringify(profile));
-      // Then update state - this will trigger re-render and navigation
-      setUser(profile);
-      setIsInitialized(true);
-      setShowLoginModal(false);
+      // ⚠️ Only update state if still mounted
+      if (isMountedRef.current) {
+        setUser(profile);
+        setIsInitialized(true);
+        setShowLoginModal(false);
+      }
       if (pendingAction) {
         setTimeout(() => {
-          pendingAction();
-          setPendingAction(null);
+          if (isMountedRef.current) {
+            pendingAction();
+            setPendingAction(null);
+          }
         }, 100);
       }
     } catch (err: any) {
       // authService already translates errors to Thai, so use err.message directly
       // Only use getErrorMessage if it's a raw Firebase error
       const errorMessage = err.code ? getErrorMessage(err) : (err.message || getErrorMessage(err));
-      setError(errorMessage);
+      if (isMountedRef.current) {
+        setError(errorMessage);
+      }
       throw new Error(errorMessage);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -339,17 +420,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('isAdminSession');
       await AsyncStorage.removeItem('isPhoneSession');
-      // Then update state
-      setUser(null);
+      // ⚠️ Only update state if still mounted
+      if (isMountedRef.current) {
+        setUser(null);
+      }
     } catch (err: any) {
       console.error('Logout error:', err);
-      // Still clear state even if error
-      setUser(null);
+      // Still clear state even if error (only if mounted)
+      if (isMountedRef.current) {
+        setUser(null);
+      }
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('isAdminSession');
       await AsyncStorage.removeItem('isPhoneSession');
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -369,14 +456,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       await updateProfile(user.uid, cleanUpdates as Partial<UserProfile>);
       const updatedProfile = { ...user, ...updates };
-      setUser(updatedProfile);
+      
+      // ⚠️ Only update state if still mounted
+      if (isMountedRef.current) {
+        setUser(updatedProfile);
+      }
       await AsyncStorage.setItem('user', JSON.stringify(updatedProfile));
     } catch (err: any) {
       const errorMessage = getErrorMessage(err);
-      setError(errorMessage);
+      if (isMountedRef.current) {
+        setError(errorMessage);
+      }
       throw new Error(errorMessage);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -388,10 +483,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await resetPassword(email);
     } catch (err: any) {
       const errorMessage = getErrorMessage(err);
-      setError(errorMessage);
+      if (isMountedRef.current) {
+        setError(errorMessage);
+      }
       throw new Error(errorMessage);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -400,13 +499,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (!user?.uid) return;
     
     try {
+      // ✅ Prevent multiple simultaneous refresh calls
+      if (profileFetchInProgressRef.current) {
+        console.log('Profile refresh already in progress, skipping duplicate');
+        return;
+      }
+      
+      profileFetchInProgressRef.current = true;
       const profile = await getUserProfile(user.uid);
-      if (profile) {
+      
+      // ⚠️ Only update state if still mounted
+      if (isMountedRef.current && profile) {
         setUser(profile);
         await AsyncStorage.setItem('user', JSON.stringify(profile));
       }
     } catch (err) {
       console.error('Error refreshing user:', err);
+    } finally {
+      profileFetchInProgressRef.current = false;
     }
   };
 

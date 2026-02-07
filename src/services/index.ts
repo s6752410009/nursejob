@@ -17,3 +17,6 @@ export * from './notificationsService';
 export * from './documentsService';
 export * from './reviewsService';
 export * from './applicantsService';
+
+// In-App Purchase Service
+export * from './iapService';

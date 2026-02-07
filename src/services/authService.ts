@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import { ADMIN_CONFIG, validateAdminConfig } from '../config/adminConfig';
 
 export interface UserProfile {
   id: string;
@@ -37,39 +38,53 @@ export interface UserProfile {
 // ==========================================
 // รายชื่อ email ที่เป็น admin (คุณสามารถเพิ่มได้)
 const ADMIN_EMAILS = [
-  'admin@nurseshift.com',
-  'admin@nursejob.com',
+  'admin@nursego.app',
   // เพิ่ม email ของคุณที่นี่:
   // 'your-email@gmail.com',
 ];
 
-// ==========================================
-// Admin Credentials (Username/Password)
-// ==========================================
-// สำหรับเข้าสู่ระบบ Admin โดยตรง (ไม่ต้องสมัครสมาชิก)
-interface AdminCredential {
-  username: string;
-  password: string;
-  displayName: string;
-  email: string;
+// ✅ Admin credentials อ่านจาก environment variables แทนที่จะ hardcode
+// ⚠️ validating config ก่อนใช้
+const adminConfigValidation = validateAdminConfig();
+if (!adminConfigValidation.valid) {
+  console.warn(adminConfigValidation.error);
 }
 
-const ADMIN_CREDENTIALS: AdminCredential[] = [
-  {
-    username: 'adminmark',
-    password: 'Markms2429',
-    displayName: 'Admin Mark',
-    email: 'adminmark@nurseshift.admin',
-  },
-  // เพิ่ม admin account อื่นๆ ได้ที่นี่
-];
+// ==========================================
+// Admin Credentials - SHA-256 hash (ไม่ใช่ plaintext)
+// ==========================================
+// Helper: SHA-256 hash function
+async function sha256(message: string): Promise<string> {
+  // ใช้ Web Crypto API (ทำงานได้ทั้ง React Native แล้ว Web)
+  const encoder = new TextEncoder();
+  const data = encoder.encode(message);
+  try {
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    // Fallback: simple hash สำหรับ environment ที่ไม่มี crypto.subtle
+    let hash = 0;
+    const str = message;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16).padStart(16, '0');
+  }
+}
 
-// ตรวจสอบ admin credentials
-export function validateAdminCredentials(username: string, password: string): AdminCredential | null {
-  const admin = ADMIN_CREDENTIALS.find(
-    (a) => a.username.toLowerCase() === username.toLowerCase() && a.password === password
-  );
-  return admin || null;
+// ตรวจสอบ admin credentials (async เพื่อใช้ hashing)
+export async function validateAdminCredentials(username: string, password: string): Promise<boolean> {
+  // Check username
+  if (username.toLowerCase() !== ADMIN_CONFIG.username.toLowerCase()) {
+    return false;
+  }
+
+  // Hash input password และเทียบกับ stored hash
+  const inputHash = await sha256(password);
+  return inputHash === ADMIN_CONFIG.passwordHash;
 }
 
 // ตรวจสอบว่าเป็น admin หรือไม่
@@ -78,8 +93,8 @@ export function isAdminEmail(email: string): boolean {
   if (ADMIN_EMAILS.includes(email.toLowerCase())) {
     return true;
   }
-  // Check admin credentials email
-  if (ADMIN_CREDENTIALS.some(a => a.email.toLowerCase() === email.toLowerCase())) {
+  // Check admin email จาก config
+  if (ADMIN_CONFIG.email.toLowerCase() === email.toLowerCase()) {
     return true;
   }
   return false;
@@ -294,18 +309,21 @@ export async function findEmailByUsername(username: string): Promise<string | nu
 
 // Login as Admin with username/password (ไม่ต้องผ่าน Firebase Auth)
 export async function loginAsAdmin(username: string, password: string): Promise<UserProfile> {
-  const adminCredential = validateAdminCredentials(username, password);
+  // Validate admin credentials (from environment variables)
+  const isValid = await validateAdminCredentials(username, password);
   
-  if (!adminCredential) {
+  if (!isValid) {
+    // Delay เพื่อป้องกัน brute force
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
     throw new Error('Username หรือ Password ไม่ถูกต้อง');
   }
 
   // สร้าง admin profile (ไม่บันทึกใน Firestore เพื่อความปลอดภัย)
   const adminProfile: UserProfile = {
-    id: `admin_${adminCredential.username}`,
-    uid: `admin_${adminCredential.username}`,
-    email: adminCredential.email,
-    displayName: adminCredential.displayName,
+    id: `admin_${ADMIN_CONFIG.username}`,
+    uid: `admin_${ADMIN_CONFIG.username}`,
+    email: ADMIN_CONFIG.email,
+    displayName: ADMIN_CONFIG.displayName,
     role: 'admin',
     isAdmin: true,
     createdAt: new Date(),

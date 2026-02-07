@@ -4,12 +4,16 @@
 // Free tier: 100,000 requests/month
 // ลงทะเบียนขอ API Key ที่: https://map.longdo.com/console
 
-// ⚠️ สำคัญ: ใส่ API Key ของคุณที่นี่
-// 1. ไปที่ https://map.longdo.com/console
-// 2. ลงทะเบียน/เข้าสู่ระบบ
-// 3. สร้าง API Key ใหม่
-// 4. copy key มาใส่ที่นี่
-const LONGDO_API_KEY = '42cbc4a02c0bc712bafa5e0b44ae2cd7';
+// ⚠️ สำคัญ: ใช้ environment variable สำหรับ API Key
+// ตั้งค่าใน app.json > extra > longdoApiKey หรือ .env
+// ถ้าไม่มี จะใช้ค่า fallback (ควรตั้งค่าก่อน deploy production)
+import Constants from 'expo-constants';
+
+const LONGDO_API_KEY = Constants.expoConfig?.extra?.longdoApiKey || process.env.EXPO_PUBLIC_LONGDO_API_KEY || '';
+
+if (!LONGDO_API_KEY) {
+  console.warn('⚠️ LONGDO_API_KEY not configured. Set EXPO_PUBLIC_LONGDO_API_KEY in .env or app.json > extra > longdoApiKey');
+}
 
 const LONGDO_SEARCH_API = 'https://search.longdo.com/mapsearch/json/search';
 const LONGDO_SUGGEST_API = 'https://search.longdo.com/mapsearch/json/suggest';

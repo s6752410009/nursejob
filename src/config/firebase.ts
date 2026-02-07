@@ -1,11 +1,11 @@
 import { initializeApp } from 'firebase/app';
-import { initializeAuth, getReactNativePersistence, getAuth, browserLocalPersistence } from 'firebase/auth';
+import { initializeAuth, getReactNativePersistence, getAuth, browserLocalPersistence, Auth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Firebase configuration - nursejob-th project
+// Firebase configuration - NurseGo project (nursejob-th)
 const firebaseConfig = {
   apiKey: "AIzaSyAf5tAn8bQe36WPmnlDAXbWYTjmjo-T0mA",
   authDomain: "nursejob-th.firebaseapp.com",
@@ -20,7 +20,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Initialize Auth - ใช้ persistence ที่แตกต่างกันสำหรับ Web และ Native
-let auth;
+let auth: Auth;
 if (Platform.OS === 'web') {
   // สำหรับ Web ใช้ getAuth ปกติ
   auth = getAuth(app);

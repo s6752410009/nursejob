@@ -9,6 +9,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +22,15 @@ import { Card, Button, ModalContainer } from '../../components/common';
 import CustomAlert, { AlertState, initialAlertState, createAlert } from '../../components/common/CustomAlert';
 import { getUserSubscription, getSubscriptionStatusDisplay, canUseFreeUrgent } from '../../services/subscriptionService';
 import { PRICING, SUBSCRIPTION_PLANS, Subscription } from '../../types';
+import { 
+  initializeIAP, 
+  getIAPProducts, 
+  requestIAPPurchase, 
+  restoreIAPPurchases,
+  cleanupIAP,
+  IAP_PRODUCTS,
+  IAPProduct,
+} from '../../services/iapService';
 
 // ============================================
 // Component
@@ -31,16 +42,33 @@ export default function ShopScreen() {
   
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPurchasing, setIsPurchasing] = useState(false);
   const [alert, setAlert] = useState<AlertState>(initialAlertState);
   const [hasFreeUrgent, setHasFreeUrgent] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [iapProducts, setIapProducts] = useState<IAPProduct[]>([]);
 
   const closeAlert = () => setAlert(initialAlertState);
 
-  // Load subscription data
+  // Initialize IAP + Load subscription
   useEffect(() => {
+    initializeIAP();
     loadSubscription();
+    loadProducts();
+    
+    return () => {
+      cleanupIAP();
+    };
   }, [user?.uid]);
+
+  const loadProducts = async () => {
+    try {
+      const products = await getIAPProducts();
+      setIapProducts(products);
+    } catch (error) {
+      console.error('Error loading IAP products:', error);
+    }
+  };
 
   const loadSubscription = async () => {
     if (!user?.uid) {
@@ -62,12 +90,17 @@ export default function ShopScreen() {
     }
   };
 
-  const handlePurchase = (item: 'premium' | 'extraPost' | 'extendPost' | 'urgent') => {
-    const prices = {
-      premium: PRICING.subscription,
-      extraPost: PRICING.extraPost,
-      extendPost: PRICING.extendPost,
-      urgent: PRICING.urgentPost,
+  const handlePurchase = async (item: 'premium' | 'extraPost' | 'extendPost' | 'urgent') => {
+    if (!user?.uid) {
+      setAlert({ ...createAlert.warning('กรุณาเข้าสู่ระบบ', 'คุณต้องเข้าสู่ระบบก่อนซื้อบริการ') } as AlertState);
+      return;
+    }
+
+    const productIdMap = {
+      premium: IAP_PRODUCTS.PREMIUM_MONTHLY,
+      extraPost: IAP_PRODUCTS.EXTRA_POST,
+      extendPost: IAP_PRODUCTS.EXTEND_POST,
+      urgent: IAP_PRODUCTS.URGENT_POST,
     };
 
     const titles = {
@@ -77,20 +110,63 @@ export default function ShopScreen() {
       urgent: '⚡ ปุ่มด่วน',
     };
 
-    setAlert({
-      ...createAlert.info(titles[item], `ราคา: ฿${prices[item]}\n\nระบบชำระเงินกำลังพัฒนา\nติดต่อ admin เพื่อซื้อบริการ`),
-      buttons: [
-        { text: 'ปิด', onPress: closeAlert },
-        { 
-          text: '📞 ติดต่อ Admin', 
-          onPress: () => {
-            closeAlert();
-            // TODO: Open LINE or contact
-            setAlert({ ...createAlert.info('ติดต่อ Admin', 'LINE: @nursejob\nFacebook: NurseJob Thailand') } as AlertState);
-          }
-        },
-      ],
-    } as AlertState);
+    const productId = productIdMap[item];
+    
+    setIsPurchasing(true);
+    try {
+      const result = await requestIAPPurchase(
+        productId, 
+        user.uid, 
+        user.displayName || 'User'
+      );
+
+      if (result.success) {
+        setAlert({ 
+          ...createAlert.success(
+            '✅ ซื้อสำเร็จ!', 
+            `${titles[item]} เปิดใช้งานแล้ว${item === 'premium' ? '\n\nคุณสามารถโพสต์ได้ไม่จำกัดแล้ว!' : ''}`
+          ) 
+        } as AlertState);
+        // Reload subscription to reflect changes
+        await loadSubscription();
+      } else if (result.error && result.error !== 'ผู้ใช้ยกเลิก') {
+        setAlert({ 
+          ...createAlert.error('❌ เกิดข้อผิดพลาด', result.error) 
+        } as AlertState);
+      }
+    } catch (error: any) {
+      setAlert({ 
+        ...createAlert.error('❌ เกิดข้อผิดพลาด', error.message || 'ไม่สามารถดำเนินการซื้อได้') 
+      } as AlertState);
+    } finally {
+      setIsPurchasing(false);
+    }
+  };
+
+  // Restore purchases (Apple ต้องมีปุ่มนี้)
+  const handleRestorePurchases = async () => {
+    setIsPurchasing(true);
+    try {
+      const results = await restoreIAPPurchases();
+      const successful = results.filter(r => r.success);
+      
+      if (successful.length > 0) {
+        setAlert({ 
+          ...createAlert.success('✅ กู้คืนสำเร็จ', `พบ ${successful.length} รายการที่กู้คืนได้`) 
+        } as AlertState);
+        await loadSubscription();
+      } else {
+        setAlert({ 
+          ...createAlert.info('ℹ️ ไม่พบรายการ', 'ไม่พบรายการซื้อที่สามารถกู้คืนได้') 
+        } as AlertState);
+      }
+    } catch (error: any) {
+      setAlert({ 
+        ...createAlert.error('❌ เกิดข้อผิดพลาด', error.message || 'ไม่สามารถกู้คืนรายการซื้อได้') 
+      } as AlertState);
+    } finally {
+      setIsPurchasing(false);
+    }
   };
 
   const subscriptionStatus = subscription 
@@ -278,13 +354,35 @@ export default function ShopScreen() {
             ติดต่อได้ที่:
           </Text>
           <View style={styles.contactInfo}>
-            <Text style={styles.contactItem}>LINE: @nursejob</Text>
-            <Text style={styles.contactItem}>Facebook: NurseJob Thailand</Text>
+            <Text style={styles.contactItem}>LINE: @nursego</Text>
+            <Text style={styles.contactItem}>Facebook: NurseGo Thailand</Text>
           </View>
         </Card>
 
+        {/* Restore Purchases (Apple requires this) */}
+        <TouchableOpacity 
+          style={styles.restoreButton}
+          onPress={handleRestorePurchases}
+          disabled={isPurchasing}
+        >
+          <Ionicons name="refresh-outline" size={16} color={colors.primary} />
+          <Text style={[styles.restoreText, { color: colors.primary }]}>
+            กู้คืนรายการซื้อ
+          </Text>
+        </TouchableOpacity>
+
         <View style={{ height: SPACING.xxl }} />
       </ScrollView>
+
+      {/* Purchasing Overlay */}
+      {isPurchasing && (
+        <View style={styles.purchasingOverlay}>
+          <View style={styles.purchasingBox}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.purchasingText}>กำลังดำเนินการ...</Text>
+          </View>
+        </View>
+      )}
 
       {/* Custom Alert */}
       <CustomAlert
@@ -561,6 +659,42 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     color: COLORS.text,
     marginBottom: 2,
+  },
+
+  // Restore Button
+  restoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    gap: SPACING.xs,
+  },
+  restoreText: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '500',
+  },
+
+  // Purchasing Overlay
+  purchasingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+  },
+  purchasingBox: {
+    backgroundColor: COLORS.white,
+    padding: SPACING.xl,
+    borderRadius: BORDER_RADIUS.lg,
+    alignItems: 'center',
+    gap: SPACING.md,
+    ...SHADOWS.medium,
+  },
+  purchasingText: {
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text,
+    fontWeight: '500',
   },
 });
 

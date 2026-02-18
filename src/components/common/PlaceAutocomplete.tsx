@@ -1,5 +1,5 @@
 // ============================================
-// PLACE AUTOCOMPLETE COMPONENT - FREE (OpenStreetMap) + Local Cache
+// PLACE AUTOCOMPLETE COMPONENT - Google Places API + Local Cache
 // ============================================
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
@@ -15,10 +15,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
-import { searchPlacesLongdo, PlaceResult } from '../../services/placesService';
+import { searchPlacesGoogle, PlaceResult, openInGoogleMaps } from '../../services/placesService';
 
-// ใช้ Longdo Map API (ของไทย) - ฟรี 100,000 requests/เดือน
-// Fallback: Local database + Nominatim (OpenStreetMap)
+// ใช้ Google Places API - ฟรี $200/เดือน (~28,000 requests)
+// Fallback: Local database ของโรงพยาบาลไทย
 
 // ====== LOCAL HOSPITAL DATABASE ======
 // Popular hospitals in Thailand for instant search
@@ -350,38 +350,45 @@ export function PlaceAutocomplete({
     setQuery(value);
   }, [value]);
 
-  // INSTANT search from local database (no debounce!)
-  const searchLocalInstant = (text: string): LocalPlaceResult[] => {
-    const localResults = searchLocalHospitals(text);
-    return localResults.map(h => ({
-      name: h.name,
-      province: h.province,
-      district: h.district,
-      address: `${h.name}, ${h.district}, ${h.province}`,
-    }));
-  };
-
-  // Search places using Longdo API (Thai) - with debounce
+  // Search using Google Places API first, fallback เป็น local hospital DB
   const searchOnlineDebounced = useCallback(
-    debounce(async (text: string, currentLocalResults: LocalPlaceResult[]) => {
+    debounce(async (text: string) => {
       if (!text || text.length < 2) {
+        setIsLoading(false);
         return;
       }
 
       try {
-        // Search using Longdo API
-        const apiResults = await searchPlacesLongdo(text);
-        
-        // Merge with local results, avoiding duplicates
-        const existingNames = new Set(currentLocalResults.map(r => r.name.toLowerCase()));
-        const uniqueOnline = apiResults.filter(p => !existingNames.has(p.name.toLowerCase()));
-        
-        if (uniqueOnline.length > 0) {
-          setResults([...currentLocalResults, ...uniqueOnline]);
+        // 1) พยายามใช้ Google Places (หรือ Longdo) จาก service ก่อน
+        const apiResults = await searchPlacesGoogle(text);
+
+        if (apiResults.length > 0) {
+          setResults(apiResults);
           setShowResults(true);
+          return;
         }
+
+        // 2) ถ้า API ไม่ได้ผลลัพธ์ ให้ fallback มาใช้ local hospital DB
+        const localResults = searchLocalHospitals(text).map(h => ({
+          name: h.name,
+          province: h.province,
+          district: h.district,
+          address: `${h.name}, ${h.district}, ${h.province}`,
+        }));
+
+        setResults(localResults);
+        setShowResults(localResults.length > 0);
       } catch (error) {
-        console.error('Online search error:', error);
+        console.error('Place search error:', error);
+        // Fallback local เวลามี error
+        const localResults = searchLocalHospitals(text).map(h => ({
+          name: h.name,
+          province: h.province,
+          district: h.district,
+          address: `${h.name}, ${h.district}, ${h.province}`,
+        }));
+        setResults(localResults);
+        setShowResults(localResults.length > 0);
       } finally {
         setIsLoading(false);
       }
@@ -399,15 +406,13 @@ export function PlaceAutocomplete({
       return;
     }
 
-    // INSTANT local search (no debounce)
-    const localResults = searchLocalInstant(text);
-    setResults(localResults);
-    setShowResults(localResults.length > 0);
-
-    // Also search online in background (with debounce)
     if (text.length >= 2) {
       setIsLoading(true);
-      searchOnlineDebounced(text, localResults);
+      searchOnlineDebounced(text);
+    } else {
+      // น้อยกว่า 2 ตัวอักษร ยังไม่ค้นหา แต่อาจล้างผลลัพธ์เก่า
+      setResults([]);
+      setShowResults(false);
     }
   };
 
@@ -497,6 +502,12 @@ export function PlaceAutocomplete({
         <View style={styles.noResultsContainer}>
           <Text style={styles.noResultsText}>ไม่พบสถานที่ที่ค้นหา</Text>
           <Text style={styles.noResultsHint}>ลองพิมพ์ชื่อโรงพยาบาลหรือคลินิก</Text>
+          <TouchableOpacity
+            style={styles.useTypedButton}
+            onPress={() => handleSelect({ name: query, province: '', district: '' })}
+          >
+            <Text style={styles.useTypedText}>ใช้สถานที่ที่พิมพ์: "{query}"</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -658,6 +669,17 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.sm,
     color: COLORS.textMuted,
     marginTop: SPACING.xs,
+  },
+  useTypedButton: {
+    marginTop: SPACING.md,
+    backgroundColor: COLORS.primary,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  useTypedText: {
+    color: '#FFF',
+    fontWeight: '700',
   },
 
   // Quick picker

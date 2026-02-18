@@ -2,7 +2,7 @@
 // CONFIRM MODAL - Beautiful Alert Replacement
 // ============================================
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -71,6 +71,17 @@ export default function ConfirmModal({
 
   const typeStyles = getTypeStyles();
 
+  useEffect(() => {
+    if (visible && typeof document !== 'undefined') {
+      try {
+        const active = document.activeElement as HTMLElement | null;
+        if (active && active !== document.body) active.blur();
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [visible]);
+
   return (
     <Modal
       visible={visible}
@@ -78,7 +89,7 @@ export default function ConfirmModal({
       animationType="fade"
       onRequestClose={onCancel}
     >
-      <View style={styles.overlay}>
+      <View style={styles.overlay} accessibilityViewIsModal={true}>
         <View style={styles.container}>
           {/* Icon */}
           <View style={[styles.iconContainer, { backgroundColor: typeStyles.bgColor }]}>
@@ -139,6 +150,14 @@ export function SuccessModal({
   buttonText = 'ตกลง',
   onClose,
 }: SuccessModalProps) {
+  useEffect(() => {
+    if (visible && typeof document !== 'undefined') {
+      try {
+        const active = document.activeElement as HTMLElement | null;
+        if (active && active !== document.body) active.blur();
+      } catch (e) {}
+    }
+  }, [visible]);
   return (
     <Modal
       visible={visible}
@@ -146,7 +165,7 @@ export function SuccessModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <View style={styles.overlay} accessibilityViewIsModal={true}>
         <View style={styles.container}>
           {/* Icon */}
           <View style={[styles.iconContainer, { backgroundColor: '#D1FAE5' }]}>
@@ -167,7 +186,7 @@ export function SuccessModal({
 
           {/* Button */}
           <TouchableOpacity
-            style={[styles.button, styles.successButton, { width: '100%' }]}
+            style={[styles.button, styles.successButton]}
             onPress={onClose}
             activeOpacity={0.8}
           >
@@ -199,6 +218,14 @@ export function ErrorModal({
   buttonText = 'ตกลง',
   onClose,
 }: ErrorModalProps) {
+  useEffect(() => {
+    if (visible && typeof document !== 'undefined') {
+      try {
+        const active = document.activeElement as HTMLElement | null;
+        if (active && active !== document.body) active.blur();
+      } catch (e) {}
+    }
+  }, [visible]);
   return (
     <Modal
       visible={visible}
@@ -206,7 +233,7 @@ export function ErrorModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <View style={styles.overlay} accessibilityViewIsModal={true}>
         <View style={styles.container}>
           {/* Icon */}
           <View style={[styles.iconContainer, { backgroundColor: '#FEE2E2' }]}>
@@ -221,7 +248,7 @@ export function ErrorModal({
 
           {/* Button */}
           <TouchableOpacity
-            style={[styles.button, styles.dangerButton, { width: '100%' }]}
+            style={[styles.button, styles.dangerButton]}
             onPress={onClose}
             activeOpacity={0.8}
           >

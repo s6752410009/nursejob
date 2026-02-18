@@ -16,6 +16,8 @@ import { Badge, Avatar } from '../common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
 import { formatRelativeTime } from '../../utils/helpers';
+import { getStaffTypeLabel, getLocationTypeLabel } from '../../constants/jobOptions';
+import { StaffType } from '../../types';
 
 // ============================================
 // Helper Functions
@@ -132,14 +134,20 @@ export function JobCard({
         </TouchableOpacity>
         <View style={styles.headerInfo}>
           <View style={styles.nameRow}>
-            <TouchableOpacity onPress={handlePosterPress} disabled={!showPosterProfile || !job.posterId}>
-              <Text style={[
-                styles.posterName,
-                job.posterVerified && styles.posterNameVerified
-              ]} numberOfLines={1}>
-                {job.posterName}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.nameContainer}>
+              <TouchableOpacity onPress={handlePosterPress} disabled={!showPosterProfile || !job.posterId} style={{ flex: 1 }}>
+                <Text
+                  style={[
+                    styles.posterName,
+                    job.posterVerified && styles.posterNameVerified,
+                  ]}
+                  numberOfLines={1}
+                  ellipsizeMode="clip"
+                >
+                  {job.posterName}
+                </Text>
+              </TouchableOpacity>
+            </View>
             {job.posterVerified && (
               <View style={styles.verifiedBadge}>
                 <Ionicons name="checkmark-circle" size={14} color="#3B82F6" />
@@ -175,11 +183,34 @@ export function JobCard({
       {/* Tags */}
       <View style={styles.tags}>
         {getStatusBadge(job.status)}
+        {/* Staff Type Badge */}
+        {job.staffType && (
+          <View style={styles.staffTypeBadge}>
+            <Text style={styles.staffTypeText}>{getStaffTypeLabel((job.staffType as StaffType) || 'OTHER')}</Text>
+          </View>
+        )}
+        {/* Location Type Badge */}
+        {job.locationType === 'HOME' && (
+          <View style={styles.homeCareBadge}>
+            <Text style={styles.homeCareText}>🏠 ดูแลบ้าน</Text>
+          </View>
+        )}
         <Badge 
           text={job.department} 
           variant="primary" 
           size="small" 
         />
+        {/* Payment Type Indicator */}
+        {job.paymentType === 'NET' && (
+          <View style={styles.netBadge}>
+            <Text style={styles.netBadgeText}>NET</Text>
+          </View>
+        )}
+        {job.paymentType === 'DEDUCT_PERCENT' && job.deductPercent && (
+          <View style={styles.deductBadge}>
+            <Text style={styles.deductBadgeText}>หัก {job.deductPercent}%</Text>
+          </View>
+        )}
       </View>
 
       {/* Shift Date & Time */}
@@ -248,12 +279,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    justifyContent: 'space-between',
+  },
+  nameContainer: {
+    flex: 1,
+    minWidth: 0, // allow text to shrink on small screens
+    marginRight: SPACING.sm,
   },
   posterName: {
     fontSize: FONT_SIZES.sm,
     fontWeight: '600',
     color: COLORS.text,
-    maxWidth: '60%',
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    textAlign: 'left',
   },
   posterNameVerified: {
     color: '#3B82F6',
@@ -266,7 +306,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 10,
-    marginLeft: 4,
+    marginLeft: 8,
     gap: 2,
   },
   verifiedText: {
@@ -306,6 +346,50 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: SPACING.xs,
     marginBottom: SPACING.sm,
+  },
+  staffTypeBadge: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  staffTypeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#0369A1',
+  },
+  homeCareBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  homeCareText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  netBadge: {
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  netBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  deductBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  deductBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#DC2626',
   },
 
   // Shift Info

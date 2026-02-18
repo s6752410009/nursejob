@@ -216,4 +216,11 @@ interface UserHospital {
 
 ---
 
+## 🎨 Theme Selection Screen
+
+- **Theme Selection Screen**: ลองเปลี่ยนโทนสีแอพได้ที่ "Settings" -> "โทนสีแอพ"
+  - ไฟล์ที่เกี่ยวข้อง: `src/theme/palettes.ts`, `src/context/ThemeContext.tsx`, `src/components/common/ThemePicker.tsx`, `src/screens/settings/ThemeSelectionScreen.tsx`, `src/navigation/AppNavigator.tsx`, `src/screens/settings/SettingsScreen.tsx`
+
+---
+
 *Last Updated: 7 February 2026*

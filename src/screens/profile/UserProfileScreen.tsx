@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useTheme } from '../../context/ThemeContext';
-import { Loading, EmptyState, Avatar, Button } from '../../components/common';
+import { Loading, EmptyState, Avatar, KittenButton as Button } from '../../components/common';
 import { JobCard } from '../../components/job/JobCard';
 import { doc, getDoc, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -41,10 +41,12 @@ interface UserData {
   photoURL?: string;
   bio?: string;
   role?: string;
+  staffType?: string;
   experience?: number;
   skills?: string[];
   department?: string;
   hospital?: string;
+  province?: string;
   licenseNumber?: string;
   isVerified?: boolean;
   createdAt?: Date;
@@ -54,6 +56,12 @@ interface UserData {
   };
   isOnline?: boolean;
   lastActiveAt?: Date;
+  // Stats
+  totalPosts?: number;
+  responseRate?: number;
+  avgRating?: number;
+  reviewCount?: number;
+  phone?: string;
 }
 
 // ============================================
@@ -94,16 +102,23 @@ export default function UserProfileScreen() {
           photoURL: data.photoURL || userPhoto,
           bio: data.bio,
           role: data.role,
+          staffType: data.staffType,
           experience: data.experience,
           skills: data.skills,
           department: data.department,
           hospital: data.hospital,
+          province: data.province,
           licenseNumber: data.licenseNumber,
           isVerified: data.isVerified,
           createdAt: data.createdAt?.toDate?.(),
           privacy: data.privacy,
           isOnline: data.isOnline,
           lastActiveAt: data.lastActiveAt?.toDate?.(),
+          totalPosts: data.totalPosts || 0,
+          responseRate: data.responseRate,
+          avgRating: data.avgRating,
+          reviewCount: data.reviewCount || 0,
+          phone: data.phone,
         });
       } else {
         // If user not found in Firestore, use passed data
@@ -182,7 +197,12 @@ export default function UserProfileScreen() {
 
   // Navigate to job detail
   const handleJobPress = (job: JobPost) => {
-    (navigation as any).navigate('JobDetail', { job });
+    const serializedJob = {
+      ...job,
+      shiftDate: job.shiftDate ? (job.shiftDate instanceof Date ? job.shiftDate.toISOString() : job.shiftDate) : undefined,
+      shiftDateEnd: (job as any).shiftDateEnd ? ((job as any).shiftDateEnd instanceof Date ? (job as any).shiftDateEnd.toISOString() : (job as any).shiftDateEnd) : undefined,
+    } as any;
+    (navigation as any).navigate('JobDetail', { job: serializedJob });
   };
 
   // Format date
@@ -337,6 +357,39 @@ export default function UserProfileScreen() {
         {/* Tab Content */}
         {activeTab === 'info' ? (
           <View style={styles.infoSection}>
+            {/* Stats Cards */}
+            <View style={styles.statsRow}>
+              <View style={[styles.statCard, { backgroundColor: colors.primaryLight }]}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>
+                  {userPosts.length}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.primary }]}>ประกาศ</Text>
+              </View>
+              <View style={[styles.statCard, { backgroundColor: '#FEF3C7' }]}>
+                <Text style={[styles.statValue, { color: '#D97706' }]}>
+                  {userData?.avgRating ? userData.avgRating.toFixed(1) : '-'}
+                </Text>
+                <Text style={[styles.statLabel, { color: '#D97706' }]}>คะแนน</Text>
+              </View>
+              <View style={[styles.statCard, { backgroundColor: '#D1FAE5' }]}>
+                <Text style={[styles.statValue, { color: '#059669' }]}>
+                  {userData?.responseRate ? `${userData.responseRate}%` : '-'}
+                </Text>
+                <Text style={[styles.statLabel, { color: '#059669' }]}>ตอบกลับ</Text>
+              </View>
+            </View>
+            
+            {/* Staff Type */}
+            {userData?.staffType && (
+              <View style={styles.infoRow}>
+                <Ionicons name="person" size={20} color={colors.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>ประเภทบุคลากร</Text>
+                  <Text style={styles.infoValue}>{userData.staffType}</Text>
+                </View>
+              </View>
+            )}
+            
             {/* Department */}
             {userData?.department && (
               <View style={styles.infoRow}>
@@ -355,6 +408,17 @@ export default function UserProfileScreen() {
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>สถานที่ทำงาน</Text>
                   <Text style={styles.infoValue}>{userData.hospital}</Text>
+                </View>
+              </View>
+            )}
+            
+            {/* Province */}
+            {userData?.province && (
+              <View style={styles.infoRow}>
+                <Ionicons name="location" size={20} color={colors.primary} />
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>จังหวัด</Text>
+                  <Text style={styles.infoValue}>{userData.province}</Text>
                 </View>
               </View>
             )}
@@ -560,6 +624,26 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     padding: SPACING.lg,
     marginTop: SPACING.sm,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.lg,
+    gap: SPACING.sm,
+  },
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+  },
+  statValue: {
+    fontSize: FONT_SIZES.xl,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: FONT_SIZES.xs,
+    marginTop: 2,
   },
   infoRow: {
     flexDirection: 'row',

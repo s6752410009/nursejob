@@ -5,7 +5,16 @@
 // A platform for nurses to find healthcare job opportunities in Thailand
 // ============================================
 
-import React from 'react';
+// Polyfill: some packages check `process.stdout.isTTY` which doesn't exist on web
+// Ensure a minimal `process.stdout` exists before other imports run
+if (typeof global.process === 'undefined') {
+  (global as any).process = { env: {} };
+}
+if (!(global as any).process.stdout) {
+  (global as any).process.stdout = { isTTY: false };
+}
+
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -17,15 +26,30 @@ import { NotificationProvider } from './src/context/NotificationContext';
 import { ToastProvider } from './src/context/ToastContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 
+// UI Kitten
+import { ApplicationProvider, IconRegistry } from '@ui-kitten/components';
+import { EvaIconsPack } from '@ui-kitten/eva-icons';
+import * as eva from '@eva-design/eva';
+import { getEvaTheme } from './src/theme/uiKitten';
+
 // Navigation
 import AppNavigator from './src/navigation/AppNavigator';
+import SplashScreen from './src/components/common/SplashScreen';
 
 // ============================================
 // APP CONTENT WITH THEME
 // ============================================
 function AppContent() {
   const { colors, isDark } = useTheme();
-  
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowSplash(false), 1000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (showSplash) return <SplashScreen />;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.primary }}>
       <AuthProvider>
@@ -48,9 +72,24 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <AppContent />
+          <IconRegistry icons={EvaIconsPack} />
+          <ThemedApplication>
+            <AppContent />
+          </ThemedApplication>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+function ThemedApplication({ children }: { children: React.ReactNode }) {
+  const { paletteId, isDark } = useTheme();
+
+  const evaTheme = getEvaTheme(paletteId, isDark);
+
+  return (
+    <ApplicationProvider {...eva} theme={evaTheme}>
+      {children}
+    </ApplicationProvider>
   );
 }

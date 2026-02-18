@@ -62,8 +62,21 @@ export async function updateUserSubscription(
   subscription: Partial<Subscription>
 ): Promise<void> {
   try {
+    // Remove any undefined values from the subscription object to avoid
+    // Firestore rejecting the write (updateDoc doesn't accept undefined values).
+    const sanitize = (obj: Partial<Subscription>) => {
+      const out: any = {};
+      for (const key of Object.keys(obj)) {
+        const v = (obj as any)[key];
+        if (v !== undefined) out[key] = v;
+      }
+      return out;
+    };
+
+    const cleanSubscription = sanitize(subscription);
+
     await updateDoc(doc(db, USERS_COLLECTION, userId), {
-      subscription,
+      subscription: cleanSubscription,
       updatedAt: new Date(),
     });
   } catch (error) {
@@ -86,7 +99,8 @@ export async function upgradeToPremium(userId: string): Promise<boolean> {
       startedAt,
       expiresAt,
       postsToday: 0,
-      lastPostDate: undefined,
+      // do not include lastPostDate when not explicitly setting it;
+      // updateUserSubscription will sanitize undefined values anyway
     });
 
     return true;
@@ -106,9 +120,10 @@ export async function canUserPostToday(userId: string): Promise<{
   canPayForExtra?: boolean; // Can pay 19 THB for extra post
 }> {
   try {
-    const subscription = await getUserSubscription(userId);
-    const plan = SUBSCRIPTION_PLANS[subscription.plan];
-    
+    const subscription = (await getUserSubscription(userId)) || { plan: 'free' };
+    const planKey = (subscription.plan as keyof typeof SUBSCRIPTION_PLANS) || 'free';
+    const plan = SUBSCRIPTION_PLANS[planKey] || SUBSCRIPTION_PLANS.free;
+
     // Premium users can post unlimited
     if (subscription.plan === 'premium') {
       return { canPost: true, postsRemaining: null };
@@ -119,14 +134,15 @@ export async function canUserPostToday(userId: string): Promise<{
     
     // Reset counter if it's a new day
     if (subscription.lastPostDate !== today) {
-      return { 
-        canPost: true, 
-        postsRemaining: plan.maxPostsPerDay 
+      const maxPostsReset = typeof plan.maxPostsPerDay === 'number' ? plan.maxPostsPerDay : 2;
+      return {
+        canPost: true,
+        postsRemaining: maxPostsReset,
       };
     }
 
     const postsToday = subscription.postsToday || 0;
-    const maxPosts = plan.maxPostsPerDay || 2;
+    const maxPosts = typeof plan.maxPostsPerDay === 'number' ? plan.maxPostsPerDay : 2;
     const postsRemaining = maxPosts - postsToday;
 
     if (postsRemaining <= 0) {
@@ -176,8 +192,9 @@ export async function incrementPostCount(userId: string): Promise<void> {
 // ============================================
 // GET POST EXPIRY DATE
 // ============================================
-export function getPostExpiryDate(plan: SubscriptionPlan): Date {
-  const expiryDays = SUBSCRIPTION_PLANS[plan].postExpiryDays;
+export function getPostExpiryDate(plan: SubscriptionPlan | string): Date {
+  const planKey = (plan as keyof typeof SUBSCRIPTION_PLANS) || 'free';
+  const expiryDays = SUBSCRIPTION_PLANS[planKey]?.postExpiryDays ?? SUBSCRIPTION_PLANS.free.postExpiryDays;
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + expiryDays);
   return expiresAt;
@@ -218,9 +235,10 @@ export function getSubscriptionStatusDisplay(subscription: Subscription): {
   statusColor: string;
   expiresText?: string;
 } {
-  const plan = SUBSCRIPTION_PLANS[subscription.plan];
-  
-  if (subscription.plan === 'premium') {
+  const planKey = (subscription?.plan as keyof typeof SUBSCRIPTION_PLANS) || 'free';
+  const plan = SUBSCRIPTION_PLANS[planKey] || SUBSCRIPTION_PLANS.free;
+
+  if (subscription?.plan === 'premium') {
     const expiresAt = subscription.expiresAt;
     let expiresText = '';
     

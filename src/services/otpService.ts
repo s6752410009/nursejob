@@ -17,6 +17,16 @@ import { auth, db } from '../config/firebase';
 let confirmationResult: ConfirmationResult | null = null;
 
 // ==========================================
+// Config flags
+// ==========================================
+// NOTE:
+// - ตอนนี้แอปยังไม่มีการเชื่อมต่อ SMS gateway / Firebase Phone Auth
+// - เพื่อให้ทั้ง debug / release APK ทดสอบ flow ได้เหมือนกัน
+//   เราเลยบังคับให้ใช้ Mock OTP ไปก่อน
+// - ถ้าพร้อมใช้ OTP จริง ให้เปลี่ยนเป็น false แล้วเซ็ต Firebase / SMS ให้ครบ
+const USE_MOCK_OTP_ALWAYS = true;
+
+// ==========================================
 // Phone OTP Functions
 // ==========================================
 
@@ -62,8 +72,8 @@ export async function sendOTP(
   phoneNumber: string,
   recaptchaVerifier?: ApplicationVerifier
 ): Promise<{ success: boolean; verificationId?: string; otp?: string; message?: string; error?: string }> {
-  // In development mode, use mock OTP
-  if (__DEV__) {
+  // In development mode หรือบังคับให้ใช้ Mock OTP ตลอด
+  if (__DEV__ || USE_MOCK_OTP_ALWAYS) {
     return sendMockOTP(phoneNumber);
   }
   

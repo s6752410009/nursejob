@@ -1,3 +1,6 @@
+import { useAuth } from '../../context/AuthContext';
+import { formatRelativeTime } from '../../utils/helpers';
+import { deleteConversation, hideConversation } from '../../services/chatService';
 // ============================================
 // CHAT SCREENS - Production Ready
 // ============================================
@@ -10,279 +13,164 @@ import {
   FlatList,
   TouchableOpacity,
   TextInput,
-  KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Animated,
   Modal,
-  Clipboard,
-  Dimensions,
+  KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RouteProp } from '@react-navigation/native';
-import { Avatar, Loading, EmptyState, Card, ConfirmModal } from '../../components/common';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import { 
-  subscribeToConversations, 
-  subscribeToMessages, 
-  sendMessage,
-  markConversationAsRead,
-  deleteConversation,
-  deleteMessage,
-  reportMessage,
-  hideConversation,
-  sendImage,
-  sendDocument,
-  sendSavedDocument,
-} from '../../services/chatService';
-import { getUserDocuments, Document } from '../../services/documentsService';
-import { Conversation, Message, RootStackParamList, MainTabParamList } from '../../types';
-import { formatRelativeTime } from '../../utils/helpers';
 import { Ionicons } from '@expo/vector-icons';
+import { Avatar, Loading, EmptyState, ConfirmModal } from '../../components/common';
+import { SafeAreaView } from 'react-native-safe-area-context';
+// EmptyState ไม่มีใน common, ใช้ LoadingOverlay หรือสร้างคอมโพเนนต์ใหม่ถ้าจำเป็น
+import { COLORS, SPACING, BORDER_RADIUS, FONT_SIZES, SHADOWS } from '../../theme';
+import { RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTheme } from '../../context/ThemeContext';
+import { useChatNotification } from '../../context/ChatNotificationContext';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { useChatNotification } from '../../context/ChatNotificationContext';
+import { Message, RootStackParamList } from '../../types';
+import { Document, getUserDocuments } from '../../services/documentsService';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import {
+  subscribeToMessages,
+  subscribeToConversations,
+  markConversationAsRead,
+  sendMessage,
+  deleteMessage,
+  reportMessage,
+  sendSavedDocument,
+  sendImage,
+  sendDocument,
+  getOrCreateConversation,
+} from '../../services/chatService';
+// ...existing imports...
 
-// ============================================
-// Toast Notification Component
-// ============================================
-interface ToastNotificationProps {
-  visible: boolean;
-  senderName: string;
-  message: string;
-  onHide: () => void;
-}
-
-function ToastNotification({ visible, senderName, message, onHide }: ToastNotificationProps) {
-  const slideAnim = useRef(new Animated.Value(-100)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 50,
-        friction: 8,
-      }).start();
-
-      // Auto hide after 3 seconds
-      const timer = setTimeout(() => {
-        Animated.timing(slideAnim, {
-          toValue: -100,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => onHide());
-      }, 3000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [visible]);
-
-  if (!visible) return null;
-
-  return (
-    <Animated.View 
-      style={[
-        styles.toastContainer,
-        { transform: [{ translateY: slideAnim }] }
-      ]}
-    >
-      <View style={styles.toastContent}>
-        <Ionicons name="chatbubble-ellipses" size={20} color={COLORS.primary} />
-        <View style={styles.toastTextContainer}>
-          <Text style={styles.toastSender} numberOfLines={1}>{senderName}</Text>
-          <Text style={styles.toastMessage} numberOfLines={2}>{message}</Text>
-        </View>
-      </View>
-    </Animated.View>
-  );
-}
-
-// ============================================
-// CHAT LIST SCREEN
-// ============================================
-type ChatListScreenNavigationProp = NativeStackNavigationProp<MainTabParamList, 'Chat'>;
-
-interface ChatListProps {
-  navigation: ChatListScreenNavigationProp;
-}
-
-export function ChatListScreen({ navigation }: ChatListProps) {
-  const { user, isAuthenticated, requireAuth } = useAuth();
-  const { colors, isDark } = useTheme();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+export function ChatListScreen({ navigation }: any) {
+  const { user } = useAuth();
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const editModeAnim = useRef(new Animated.Value(0)).current;
   const [isLoading, setIsLoading] = useState(true);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showHiddenModal, setShowHiddenModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
+  const [conversationToDelete, setConversationToDelete] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Subscribe to conversations
   useEffect(() => {
-    if (!user?.uid) {
-      setIsLoading(false);
+    Animated.timing(editModeAnim, {
+      toValue: isEditMode ? 1 : 0,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+  }, [isEditMode]);
+
+  const handleConversationPress = (item: any) => {
+    if (isEditMode) {
+      setSelectedIds(prev => prev.includes(item.id) ? prev.filter(id => id !== item.id) : [...prev, item.id]);
       return;
     }
+    navigation.navigate('ChatRoom', { conversationId: item.id, recipientName: item.participantDetails?.find((p:any)=>p.id!==user?.uid)?.displayName || 'ผู้ใช้', jobTitle: item.jobTitle });
+  };
 
-    const unsubscribe = subscribeToConversations(user.uid, (convos) => {
-      // Filter out hidden conversations
-      const visibleConvos = convos.filter(c => !c.hiddenBy?.includes(user.uid));
-      setConversations(visibleConvos);
+  const handleHideConversation = async (item: any) => {
+    if (!user?.uid) return;
+    try { await hideConversation(item.id, user.uid); setConversations(prev => prev.map(c => c.id === item.id ? { ...c, hiddenBy: [...(c.hiddenBy||[]), user.uid] } : c)); } catch(e){console.error(e);} 
+  };
+
+  const handleDeletePress = async (item: any) => { setConversationToDelete(item); setShowDeleteModal(true); };
+
+  const confirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      if (isEditMode && selectedIds.length > 0) {
+        for (const id of selectedIds) { await deleteConversation(id); }
+        setSelectedIds([]);
+        setIsEditMode(false);
+      } else if (conversationToDelete) {
+        await deleteConversation(conversationToDelete.id);
+        setConversationToDelete(null);
+      }
+      setShowDeleteModal(false);
+    } catch (error) { console.error('Error deleting conversation:', error); }
+    finally { setIsDeleting(false); }
+  };
+
+  // Subscribe to user's conversations
+  useEffect(() => {
+    if (!user?.uid) return;
+    setIsLoading(true);
+    const unsubscribe = subscribeToConversations(user.uid, (convs) => {
+      setConversations(convs);
       setIsLoading(false);
     });
-
     return () => unsubscribe();
   }, [user?.uid]);
 
-  // Handle conversation press
-  const handleConversationPress = (conversation: Conversation) => {
-    const otherParticipant = conversation.participantDetails?.find(p => p.id !== user?.uid);
-    
-    (navigation as any).navigate('ChatRoom', {
-      conversationId: conversation.id,
-      recipientName: otherParticipant?.displayName || 'ผู้ใช้',
-      jobTitle: conversation.jobTitle,
-    });
-  };
-
-  // Handle delete conversation
-  const handleDeletePress = (conversation: Conversation) => {
-    setConversationToDelete(conversation);
-    setShowDeleteModal(true);
-  };
-
-  // Handle hide conversation (swipe action)
-  const handleHideConversation = async (conversation: Conversation) => {
+  // Pull-to-refresh logic
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const handleRefresh = () => {
     if (!user?.uid) return;
-    try {
-      await hideConversation(conversation.id, user.uid);
-    } catch (error) {
-      console.error('Error hiding conversation:', error);
-    }
+    setIsRefreshing(true);
+    // Force reload by unsubscribing and resubscribing
+    const unsubscribe = subscribeToConversations(user.uid, (convs) => {
+      setConversations(convs);
+      setIsRefreshing(false);
+    });
+    setTimeout(() => {
+      unsubscribe();
+      if (isRefreshing) setIsRefreshing(false);
+    }, 2000); // fallback timeout
   };
 
-  const confirmDelete = async () => {
-    if (!conversationToDelete) return;
-    
-    setIsDeleting(true);
-    try {
-      await deleteConversation(conversationToDelete.id);
-      setShowDeleteModal(false);
-      setConversationToDelete(null);
-    } catch (error) {
-      console.error('Error deleting conversation:', error);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  // Guest view
-  if (!isAuthenticated) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.guestContainer}>
-          <Text style={styles.guestIcon}>💬</Text>
-          <Text style={styles.guestTitle}>ยังไม่ได้เข้าสู่ระบบ</Text>
-          <Text style={styles.guestDescription}>
-            เข้าสู่ระบบเพื่อดูข้อความและแชทกับโรงพยาบาล
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Render conversation item with swipe actions
-  const renderConversation = ({ item }: { item: Conversation }) => {
-    const otherParticipant = item.participantDetails?.find(p => p.id !== user?.uid);
-    // Get unread count - support both new (unreadBy) and old (unreadCount) format
+  const renderConversation = ({ item }: { item: any }) => {
+    const otherParticipant = item.participantDetails?.find((p: any) => p.id !== user?.uid);
     const unreadCount = item.unreadBy?.[user?.uid || ''] ?? item.unreadCount ?? 0;
     const isUnread = unreadCount > 0;
     const isMobile = Platform.OS !== 'web';
-
+    const translateX = editModeAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 44] });
     const conversationContent = (
-      <TouchableOpacity
-        style={[styles.conversationItem, isUnread ? styles.conversationUnread : undefined]}
-        onPress={() => handleConversationPress(item)}
-      >
-        <Avatar
-          uri={otherParticipant?.photoURL}
-          name={otherParticipant?.displayName || otherParticipant?.name || 'User'}
-          size={56}
-        />
-        <View style={styles.conversationContent}>
-          <View style={styles.conversationHeader}>
-            <Text style={[styles.conversationName, isUnread ? styles.textBold : undefined]}>
-              {otherParticipant?.displayName || otherParticipant?.name || 'ผู้ใช้'}
-            </Text>
-            <Text style={styles.conversationTime}>
-              {item.lastMessageAt ? formatRelativeTime(item.lastMessageAt) : ''}
-            </Text>
+      <Animated.View style={{ transform: [{ translateX }], width: '100%' }}>
+        <TouchableOpacity style={[styles.conversationItem, isUnread ? styles.conversationUnread : undefined]} onPress={()=>handleConversationPress(item)} onLongPress={()=>{ setIsEditMode(true); setSelectedIds(prev => prev.includes(item.id) ? prev : [...prev, item.id]); }} activeOpacity={0.8}>
+          <Avatar uri={otherParticipant?.photoURL} name={otherParticipant?.displayName || otherParticipant?.name || 'User'} size={56} />
+          <Animated.View style={[styles.selectCheckbox, { transform: [{ scale: editModeAnim }], opacity: editModeAnim }]} pointerEvents={isEditMode ? 'auto' : 'none'}>
+            <TouchableOpacity onPress={() => setSelectedIds(prev => prev.includes(item.id) ? prev.filter((id:any)=>id!==item.id) : [...prev, item.id])}>
+              {selectedIds.includes(item.id) ? <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} /> : <Ionicons name="ellipse-outline" size={22} color={COLORS.textSecondary} />}
+            </TouchableOpacity>
+          </Animated.View>
+          <View style={styles.conversationContent}>
+            <View style={styles.conversationHeader}><Text style={[styles.conversationName, isUnread ? styles.textBold : undefined]}>{otherParticipant?.displayName || otherParticipant?.name || 'ผู้ใช้'}</Text><Text style={styles.conversationTime}>{item.lastMessageAt ? formatRelativeTime(item.lastMessageAt) : ''}</Text></View>
+            {item.jobTitle && <Text style={styles.conversationJob} numberOfLines={1}>📋 {item.jobTitle}</Text>}
+            <View style={styles.conversationFooter}><Text style={[styles.conversationMessage, isUnread ? styles.textBold : undefined]} numberOfLines={1}>{item.lastMessage || 'เริ่มต้นการสนทนา'}</Text>{isUnread && <View style={styles.unreadBadge}><Text style={styles.unreadText}>{unreadCount>9?'9+':unreadCount}</Text></View>}</View>
           </View>
-          {item.jobTitle && (
-            <Text style={styles.conversationJob} numberOfLines={1}>
-              📋 {item.jobTitle}
-            </Text>
-          )}
-          <View style={styles.conversationFooter}>
-            <Text 
-              style={[styles.conversationMessage, isUnread ? styles.textBold : undefined]}
-              numberOfLines={1}
-            >
-              {item.lastMessage || 'เริ่มต้นการสนทนา'}
-            </Text>
-            {isUnread && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
     );
-
-    // For web/PC - show action buttons
-    if (!isMobile) {
-      return (
-        <View style={styles.conversationRow}>
-          {conversationContent}
-          <View style={styles.conversationActions}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.hideButton]}
-              onPress={() => handleHideConversation(item)}
-            >
-              <Ionicons name="eye-off-outline" size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.deleteButton]}
-              onPress={() => handleDeletePress(item)}
-            >
-              <Ionicons name="trash-outline" size={18} color={colors.danger} />
-            </TouchableOpacity>
-          </View>
+    if (!isMobile) return (
+      <View style={styles.conversationRow}>
+        {typeof conversationContent === 'string' ? <Text>{conversationContent}</Text> : conversationContent}
+        <View style={styles.conversationActions}>
+          <TouchableOpacity style={[styles.actionButton, styles.hideButton]} onPress={()=>handleHideConversation(item)}>
+            <Ionicons name="eye-off-outline" size={18} color={COLORS.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={()=>handleDeletePress(item)}>
+            <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+          </TouchableOpacity>
         </View>
-      );
-    }
-
-    // For mobile - return conversation with gesture handler wrapping at app level
+      </View>
+    );
     return (
       <View style={styles.conversationRow}>
-        {conversationContent}
+        {typeof conversationContent === 'string' ? <Text>{conversationContent}</Text> : conversationContent}
         <View style={styles.swipeHint}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.hideButton]}
-            onPress={() => handleHideConversation(item)}
-          >
-            <Ionicons name="eye-off-outline" size={18} color={colors.textSecondary} />
+          <TouchableOpacity style={[styles.actionButton, styles.hideButton]} onPress={()=>handleHideConversation(item)}>
+            <Ionicons name="eye-off-outline" size={18} color={COLORS.textSecondary} />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton]}
-            onPress={() => handleDeletePress(item)}
-          >
-            <Ionicons name="trash-outline" size={18} color={colors.danger} />
+          <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={()=>handleDeletePress(item)}>
+            <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
           </TouchableOpacity>
         </View>
       </View>
@@ -290,45 +178,27 @@ export function ChatListScreen({ navigation }: ChatListProps) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: COLORS.background }]} edges={['top']}>
+      <View style={[styles.header, { backgroundColor: COLORS.primary, borderBottomColor: COLORS.primary }]}>
         <Text style={styles.headerTitle}>ข้อความ</Text>
       </View>
+      {isLoading ? <Loading text="กำลังโหลดข้อความ..." /> : <FlatList data={conversations.filter(c => !c.hiddenBy?.includes(user?.uid || ''))} renderItem={renderConversation} keyExtractor={i=>i.id} ListEmptyComponent={<EmptyState icon="💬" title="ยังไม่มีข้อความ" description="เมื่อคุณติดต่อกับโรงพยาบาล ข้อความจะแสดงที่นี่" />} contentContainerStyle={conversations.filter(c => !c.hiddenBy?.includes(user?.uid || '')).length===0?{flex:1}:undefined} refreshing={isRefreshing} onRefresh={handleRefresh} />}
 
-      {/* Conversations List */}
-      {isLoading ? (
-        <Loading text="กำลังโหลดข้อความ..." />
-      ) : (
-        <FlatList
-          data={conversations}
-          renderItem={renderConversation}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={
-            <EmptyState
-              icon="💬"
-              title="ยังไม่มีข้อความ"
-              description="เมื่อคุณติดต่อกับโรงพยาบาล ข้อความจะแสดงที่นี่"
-            />
-          }
-          contentContainerStyle={conversations.length === 0 ? { flex: 1 } : undefined}
-        />
-      )}
+      <Modal visible={showMenu} transparent animationType="fade"><TouchableOpacity style={styles.popupModalOverlay} onPress={()=>setShowMenu(false)} /><View style={[styles.menuContainer, { backgroundColor: COLORS.surface }]}><TouchableOpacity style={styles.popupMenuItem} onPress={()=>{ setShowMenu(false); setIsEditMode(true); }}><Text style={{ color: COLORS.text }}>แก้ไข/เลือกหลายรายการ</Text></TouchableOpacity><TouchableOpacity style={styles.popupMenuItem} onPress={()=>{ setShowMenu(false); setShowHiddenModal(true); }}><Text style={{ color: COLORS.text }}>ดูที่ซ่อน</Text></TouchableOpacity><TouchableOpacity style={styles.popupMenuItem} onPress={()=>setShowMenu(false)}><Text style={{ color: COLORS.text }}>ยกเลิก</Text></TouchableOpacity></View></Modal>
 
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal
-        visible={showDeleteModal}
-        title="ลบการสนทนา"
-        message={`คุณต้องการลบการสนทนากับ "${conversationToDelete?.participantDetails?.find(p => p.id !== user?.uid)?.displayName || 'ผู้ใช้'}" หรือไม่? ข้อความทั้งหมดจะถูกลบอย่างถาวร`}
-        confirmText={isDeleting ? "กำลังลบ..." : "ลบ"}
-        cancelText="ยกเลิก"
-        onConfirm={confirmDelete}
-        onCancel={() => {
-          setShowDeleteModal(false);
-          setConversationToDelete(null);
-        }}
-        type="danger"
-      />
+      <Modal visible={showHiddenModal} animationType="slide">
+        <SafeAreaView style={[styles.container, { backgroundColor: COLORS.background }]}>
+          <View style={[styles.header, { backgroundColor: COLORS.surface }]}>
+            <Text style={[styles.headerTitle, { color: COLORS.text }]}>แชทที่ถูกซ่อน</Text>
+            <TouchableOpacity onPress={() => setShowHiddenModal(false)} style={{ position: 'absolute', right: SPACING.md, top: SPACING.md }}>
+              <Text style={{ color: COLORS.primary }}>ปิด</Text>
+            </TouchableOpacity>
+          </View>
+          <FlatList data={conversations.filter(c=>c.hiddenBy?.includes(user?.uid||''))} renderItem={({item})=>{ const other=item.participantDetails?.find((p:any)=>p.id !== user?.uid); return (<View style={styles.conversationRow}><TouchableOpacity style={styles.conversationItem} onPress={()=> (navigation as any).navigate('ChatRoom', { conversationId: item.id, recipientName: other?.displayName || 'ผู้ใช้', jobTitle: item.jobTitle })}><Avatar uri={other?.photoURL} name={other?.displayName || other?.name || 'User'} size={56} /><View style={styles.conversationContent}><View style={styles.conversationHeader}><Text style={styles.conversationName}>{other?.displayName || other?.name || 'ผู้ใช้'}</Text><Text style={styles.conversationTime}>{item.lastMessageAt?formatRelativeTime(item.lastMessageAt):''}</Text></View><Text style={styles.conversationMessage}>{item.lastMessage||''}</Text></View></TouchableOpacity><View style={{padding:SPACING.md}}><TouchableOpacity onPress={async()=>{ try{ await (await import('../../services/chatService')).unhideConversation(item.id, user?.uid||''); } catch(e){console.error(e);} }}><Text style={{color:COLORS.primary}}>นำกลับ</Text></TouchableOpacity></View></View>); }} keyExtractor={i=>i.id} ListEmptyComponent={<EmptyState icon="🙈" title="ยังไม่มีแชทที่ถูกซ่อน" />} />
+        </SafeAreaView>
+      </Modal>
+
+      <ConfirmModal visible={showDeleteModal} title="ลบการสนทนา" message={`คุณต้องการลบการสนทนากับ "${conversationToDelete?.participantDetails?.find((p:any)=>p.id !== user?.uid)?.displayName || 'ผู้ใช้'}" หรือไม่? ข้อความทั้งหมดจะถูกลบอย่างถาวร`} confirmText={isDeleting?"กำลังลบ...":"ลบ"} cancelText="ยกเลิก" onConfirm={confirmDelete} onCancel={()=>{ setShowDeleteModal(false); setConversationToDelete(null); }} type="danger" />
     </SafeAreaView>
   );
 }
@@ -420,9 +290,15 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
   };
 
   // Copy message
-  const handleCopyMessage = () => {
+  const handleCopyMessage = async () => {
     if (selectedMessage) {
-      Clipboard.setString(selectedMessage.text);
+      try {
+        if ((navigator as any)?.clipboard?.writeText) {
+          await (navigator as any).clipboard.writeText(selectedMessage.text || '');
+        }
+      } catch (e) {
+        // ignore if clipboard not available
+      }
     }
     setShowMessageMenu(false);
   };
@@ -700,17 +576,17 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
       {/* Header */}
-      <View style={[styles.chatHeader, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+      <View style={[styles.chatHeader, { backgroundColor: colors.primary, borderBottomColor: colors.primary }]}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backIcon}>←</Text>
+          <Text style={[styles.backIcon, { color: '#fff' }]}>←</Text>
         </TouchableOpacity>
         <View style={styles.chatHeaderContent}>
-          <Text style={styles.chatHeaderName}>{recipientName}</Text>
+          <Text style={[styles.chatHeaderName, { color: '#fff' }]}>{recipientName}</Text>
           {jobTitle && (
-            <Text style={styles.chatHeaderJob} numberOfLines={1}>
+            <Text style={[styles.chatHeaderJob, { color: '#fff' }]} numberOfLines={1}>
               📋 {jobTitle}
             </Text>
           )}
@@ -981,26 +857,76 @@ export function ChatRoomScreen({ navigation, route }: ChatRoomProps) {
   );
 }
 
+// Named exports are declared on their function declarations above.
+
 // ============================================
 // Styles
 // ============================================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
 
   // Header
   header: {
+    paddingTop: Platform.OS === 'ios' ? 48 : 24,
+    paddingBottom: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    backgroundColor: COLORS.primary,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    elevation: 4,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: COLORS.white,
+    letterSpacing: 0.5,
+  },
+
+  editHeader: {
     padding: SPACING.md,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: FONT_SIZES.xl,
-    fontWeight: '700',
-    color: COLORS.text,
+
+  selectCheckbox: {
+    position: 'absolute',
+    left: -8,
+    top: 18,
+    zIndex: 10,
+  },
+
+  
+
+  menuContainer: {
+    position: 'absolute',
+    right: 12,
+    top: 60,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.sm,
+    width: 220,
+    ...SHADOWS.sm,
+  },
+
+  popupModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)'
+  },
+
+  popupMenuItem: {
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
   },
 
   // Guest View
@@ -1017,7 +943,6 @@ const styles = StyleSheet.create({
   guestTitle: {
     fontSize: FONT_SIZES.xl,
     fontWeight: '700',
-    color: COLORS.text,
   },
   guestDescription: {
     fontSize: FONT_SIZES.md,
@@ -1030,17 +955,32 @@ const styles = StyleSheet.create({
   conversationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    backgroundColor: 'transparent',
+    marginHorizontal: 0,
+    marginVertical: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   conversationItem: {
     flex: 1,
     flexDirection: 'row',
-    padding: SPACING.md,
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.md,
+    marginVertical: SPACING.xs,
+    marginHorizontal: SPACING.md,
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.lg,
+    elevation: 1,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
   },
   conversationUnread: {
     backgroundColor: COLORS.primaryLight,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
   },
   deleteConversationButton: {
     padding: SPACING.md,
@@ -1086,18 +1026,26 @@ const styles = StyleSheet.create({
   },
   unreadBadge: {
     backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: SPACING.xs,
+    marginLeft: SPACING.sm,
+    paddingHorizontal: 2,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.12,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
   },
   unreadText: {
     color: COLORS.white,
-    fontSize: 12,
-    fontWeight: '700',
-    paddingHorizontal: 6,
+    fontWeight: 'bold',
+    fontSize: 14,
+    textAlign: 'center',
+    paddingHorizontal: 4,
   },
 
   // Conversation Actions (Web/PC)
@@ -1168,7 +1116,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   messagesList: {
-    padding: SPACING.md,
+    padding: SPACING.sm,
     flexGrow: 1,
   },
   emptyChat: {
@@ -1184,7 +1132,7 @@ const styles = StyleSheet.create({
   // Date Header
   dateHeader: {
     alignItems: 'center',
-    marginVertical: SPACING.md,
+    marginVertical: SPACING.sm,
   },
   dateText: {
     fontSize: FONT_SIZES.xs,
@@ -1616,7 +1564,60 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.xs,
     color: COLORS.textSecondary,
   },
-});
+}); 
 
-export default { ChatListScreen, ChatRoomScreen };
+
+interface ToastNotificationProps {
+  visible: boolean;
+  senderName: string;
+  message: string;
+  onHide: () => void;
+}
+
+function ToastNotification({ visible, senderName, message, onHide }: ToastNotificationProps) {
+  const slideAnim = useRef(new Animated.Value(-100)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 50,
+        friction: 8,
+      }).start();
+
+      // Auto hide after 3 seconds
+      const timer = setTimeout(() => {
+        Animated.timing(slideAnim, {
+          toValue: -100,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => onHide());
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View 
+      style={[
+        styles.toastContainer,
+        { transform: [{ translateY: slideAnim }] }
+      ]}
+    >
+      <View style={styles.toastContent}>
+        <Ionicons name="chatbubble-ellipses" size={20} color={COLORS.primary} />
+        <View style={styles.toastTextContainer}>
+          <Text style={styles.toastSender} numberOfLines={1}>{senderName}</Text>
+          <Text style={styles.toastMessage} numberOfLines={2}>{message}</Text>
+        </View>
+      </View>
+    </Animated.View>
+  );
+}
+
+// ChatListScreen and ChatRoomScreen are named exports via their declarations.
 

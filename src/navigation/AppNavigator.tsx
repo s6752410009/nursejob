@@ -28,12 +28,13 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import PhoneLoginScreen from '../screens/auth/PhoneLoginScreen';
 import EmailVerificationScreen from '../screens/auth/EmailVerificationScreen';
 import OTPVerificationScreen from '../screens/auth/OTPVerificationScreen';
+import ChooseRoleScreen from '../screens/auth/ChooseRoleScreen';
 import CompleteRegistrationScreen from '../screens/auth/CompleteRegistrationScreen';
 
 // Main Screens
 import HomeScreen from '../screens/home/HomeScreen';
 import JobDetailScreen from '../screens/job/JobDetailScreen';
-import PostJobScreen from '../screens/job/PostJobScreen';
+import PostJobScreen from '../screens/job/PostJobScreenNew';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import UserProfileScreen from '../screens/profile/UserProfileScreen';
 import { ChatListScreen, ChatRoomScreen } from '../screens/chat/ChatScreens';
@@ -51,6 +52,7 @@ import TermsScreen from '../screens/legal/TermsScreen';
 import PrivacyScreen from '../screens/legal/PrivacyScreen';
 import VerificationScreen from '../screens/verification/VerificationScreen';
 import ShopScreen from '../screens/shop/ShopScreen';
+import ThemeSelectionScreen from '../screens/settings/ThemeSelectionScreen';
 
 // Admin Screens
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
@@ -60,6 +62,7 @@ import AdminFeedbackScreen from '../screens/admin/AdminFeedbackScreen';
 
 // Feature Screens
 import FeedbackScreen from '../screens/feedback/FeedbackScreen';
+import PaymentScreen from '../screens/payment/PaymentScreen';
 
 // Theme
 import { COLORS, SPACING, FONT_SIZES } from '../theme';
@@ -88,6 +91,7 @@ function AuthNavigator() {
       <AuthStack.Screen name="PhoneLogin" component={PhoneLoginScreen} />
       <AuthStack.Screen name="EmailVerification" component={EmailVerificationScreen} />
       <AuthStack.Screen name="OTPVerification" component={OTPVerificationScreen} />
+      <AuthStack.Screen name="ChooseRole" component={ChooseRoleScreen} />
       <AuthStack.Screen name="CompleteRegistration" component={CompleteRegistrationScreen} />
       <AuthStack.Screen name="Terms" component={TermsScreen} />
       <AuthStack.Screen name="Privacy" component={PrivacyScreen} />
@@ -392,6 +396,16 @@ function RootNavigator() {
         }}
       />
 
+      {/* Payment (mock for testing) */}
+      <RootStack.Screen
+        name="Payment"
+        component={PaymentScreen}
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+
       {/* Auth Screens - Modal */}
       <RootStack.Screen
         name="Auth"
@@ -399,6 +413,14 @@ function RootNavigator() {
         options={{
           presentation: 'modal',
           animation: 'slide_from_bottom',
+        }}
+      />
+      {/* Theme Selection */}
+      <RootStack.Screen 
+        name="ThemeSelection" 
+        component={ThemeSelectionScreen}
+        options={{
+          animation: 'slide_from_right',
         }}
       />
     </RootStack.Navigator>

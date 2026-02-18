@@ -383,6 +383,33 @@ export const hideConversation = async (
   }
 };
 
+// Unhide conversation for a user (remove from hiddenBy)
+export const unhideConversation = async (
+  conversationId: string,
+  userId: string
+): Promise<void> => {
+  try {
+    const conversationRef = doc(db, 'conversations', conversationId);
+    const conversationDoc = await getDoc(conversationRef);
+
+    if (!conversationDoc.exists()) {
+      throw new Error('ไม่พบการสนทนา');
+    }
+
+    const data = conversationDoc.data();
+    const hiddenBy = data.hiddenBy || [];
+
+    if (hiddenBy.includes(userId)) {
+      await updateDoc(conversationRef, {
+        hiddenBy: hiddenBy.filter((id: string) => id !== userId),
+      });
+    }
+  } catch (error) {
+    console.error('Error unhiding conversation:', error);
+    throw new Error('ไม่สามารถนำการสนทนาออกจากการซ่อนได้');
+  }
+};
+
 // Send image in chat
 export const sendImage = async (
   conversationId: string,

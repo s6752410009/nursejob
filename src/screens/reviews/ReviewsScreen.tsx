@@ -23,7 +23,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Loading, EmptyState, Avatar, Button } from '../../components/common';
+import { Loading, EmptyState, Avatar, KittenButton as Button } from '../../components/common';
 import {
   getHospitalReviews,
   createReview,

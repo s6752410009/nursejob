@@ -31,14 +31,18 @@ WebBrowser.maybeCompleteAuthSession();
 // ============================================
 // Google OAuth Config
 // ============================================
-// สำหรับ production คุณต้องสร้าง OAuth credentials ที่ Google Cloud Console
+// Google OAuth Config - nurse-go-th project
 // https://console.cloud.google.com/apis/credentials
+// Use correct client IDs for each platform
+const GOOGLE_WEB_CLIENT_ID = '427547114323-87ibkaeo6kun7cfhc20919c9gn7ntp24.apps.googleusercontent.com';
+const GOOGLE_ANDROID_CLIENT_ID = '427547114323-2v7g7k1v7k1v7k1v7k1v7k1v7k1v7k1v.apps.googleusercontent.com'; // <-- Replace with your real Android OAuth client ID
+const GOOGLE_IOS_CLIENT_ID = '427547114323-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com'; // <-- Replace with your real iOS OAuth client ID if needed
+
 const GOOGLE_CLIENT_ID = {
-  // เปลี่ยนเป็น client ID ของคุณ
-  expoClientId: 'YOUR_EXPO_CLIENT_ID.apps.googleusercontent.com',
-  androidClientId: 'YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com',
-  iosClientId: 'YOUR_IOS_CLIENT_ID.apps.googleusercontent.com',
-  webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+  expoClientId: GOOGLE_WEB_CLIENT_ID, // Only for Expo Go (not for EAS build)
+  androidClientId: GOOGLE_ANDROID_CLIENT_ID, // Use real Android client ID for EAS build
+  iosClientId: GOOGLE_IOS_CLIENT_ID, // Use real iOS client ID if needed
+  webClientId: GOOGLE_WEB_CLIENT_ID,
 };
 
 // ============================================

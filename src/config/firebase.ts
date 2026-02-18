@@ -5,15 +5,15 @@ import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Firebase configuration - NurseGo project (nursejob-th)
+// Firebase configuration - NurseGo project (nurse-go-th)
 const firebaseConfig = {
-  apiKey: "AIzaSyAf5tAn8bQe36WPmnlDAXbWYTjmjo-T0mA",
-  authDomain: "nursejob-th.firebaseapp.com",
-  projectId: "nursejob-th",
-  storageBucket: "nursejob-th.firebasestorage.app",
-  messagingSenderId: "740905779838",
-  appId: "1:740905779838:web:637d5a5b0a7a46980ace2f",
-  measurementId: "G-WPD2T47VTK"
+  apiKey: "AIzaSyCePlG5nmTJfOGa_P-j0Xm8c0GVF5xZ3zg",
+  authDomain: "nurse-go-th.firebaseapp.com",
+  projectId: "nurse-go-th",
+  storageBucket: "nurse-go-th.firebasestorage.app",
+  messagingSenderId: "427547114323",
+  appId: "1:427547114323:android:a89c6f0e5659ae8a19bfa6",
+  measurementId: "G-E5NBXHTMLR"
 };
 
 // Initialize Firebase

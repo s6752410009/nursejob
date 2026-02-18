@@ -373,10 +373,21 @@ export async function updateUserProfile(
 ): Promise<void> {
   try {
     const docRef = doc(db, USERS_COLLECTION, userId);
-    await updateDoc(docRef, {
-      ...updates,
-      updatedAt: serverTimestamp(),
-    });
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+      // If user doc does not exist, create with minimal/default fields
+      await setDoc(docRef, {
+        uid: userId,
+        createdAt: serverTimestamp(),
+        ...updates,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    } else {
+      await updateDoc(docRef, {
+        ...updates,
+        updatedAt: serverTimestamp(),
+      });
+    }
 
     // Update Firebase Auth profile if displayName or photoURL changed
     const currentUser = auth.currentUser;

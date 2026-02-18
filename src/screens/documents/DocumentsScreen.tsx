@@ -22,7 +22,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Loading, EmptyState, Button } from '../../components/common';
+import { Loading, EmptyState, KittenButton as Button } from '../../components/common';
 import {
   getUserDocuments,
   uploadDocument,
@@ -232,7 +232,9 @@ export default function DocumentsScreen() {
                 <Text style={styles.verifiedText}>ยืนยันแล้ว</Text>
               </View>
             ) : (
-              <Text style={styles.pendingText}>รอการตรวจสอบ</Text>
+                <View>
+                  <Text style={styles.pendingText}>รอการตรวจสอบ</Text>
+                </View>
             )}
             <Text style={styles.documentDate}>{formatDate(item.createdAt)}</Text>
           </View>
@@ -262,10 +264,10 @@ export default function DocumentsScreen() {
           {isUploading ? (
             <Text style={styles.addButtonText}>กำลังอัพโหลด...</Text>
           ) : (
-            <>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Ionicons name="add" size={20} color={colors.white} />
               <Text style={styles.addButtonText}>เพิ่มเอกสาร</Text>
-            </>
+            </View>
           )}
         </TouchableOpacity>
       </View>

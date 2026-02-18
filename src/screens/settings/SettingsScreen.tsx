@@ -305,7 +305,7 @@ export default function SettingsScreen() {
           })()}
           
           {/* Plan Details */}
-          <View style={styles.planDetails}>
+            <View style={styles.planDetails}>
             <View style={styles.planDetailRow}>
               <Text style={styles.planDetailLabel}>โพสต์ต่อวัน</Text>
               <Text style={styles.planDetailValue}>
@@ -314,9 +314,12 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.planDetailRow}>
               <Text style={styles.planDetailLabel}>อายุโพสต์</Text>
-              <Text style={styles.planDetailValue}>
-                {SUBSCRIPTION_PLANS[subscription.plan].postExpiryDays} วัน
-              </Text>
+                <Text style={styles.planDetailValue}>
+                  {(() => {
+                    const planKey = (subscription?.plan as keyof typeof SUBSCRIPTION_PLANS) || 'free';
+                    return SUBSCRIPTION_PLANS[planKey]?.postExpiryDays ?? SUBSCRIPTION_PLANS.free.postExpiryDays;
+                  })()} วัน
+                </Text>
             </View>
           </View>
         </View>

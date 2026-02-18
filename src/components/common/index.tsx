@@ -88,9 +88,13 @@ export function Button({
         />
       ) : (
         <View style={styles.buttonContent}>
-          {icon && iconPosition === 'left' && <View style={styles.iconLeft}>{icon}</View>}
+          {icon && iconPosition === 'left' && (
+            <View style={styles.iconLeft}>{typeof icon === 'string' || typeof icon === 'number' ? <Text>{icon}</Text> : icon}</View>
+          )}
           <Text style={textStyles}>{title}</Text>
-          {icon && iconPosition === 'right' && <View style={styles.iconRight}>{icon}</View>}
+          {icon && iconPosition === 'right' && (
+            <View style={styles.iconRight}>{typeof icon === 'string' || typeof icon === 'number' ? <Text>{icon}</Text> : icon}</View>
+          )}
         </View>
       )}
     </TouchableOpacity>
@@ -138,7 +142,9 @@ export function Input({
         isFocused && [styles.inputWrapperFocused, { borderColor: colors.primary }],
         error && styles.inputWrapperError,
       ]}>
-        {icon && iconPosition === 'left' && <View style={styles.inputIcon}>{icon}</View>}
+        {icon && iconPosition === 'left' && (
+          <View style={styles.inputIcon}>{typeof icon === 'string' || typeof icon === 'number' ? <Text>{icon}</Text> : icon}</View>
+        )}
         <TextInput
           style={[
             styles.input,
@@ -155,7 +161,9 @@ export function Input({
           editable={editable !== false}
           {...props}
         />
-        {icon && iconPosition === 'right' && <View style={styles.inputIcon}>{icon}</View>}
+        {icon && iconPosition === 'right' && (
+          <View style={styles.inputIcon}>{typeof icon === 'string' || typeof icon === 'number' ? <Text>{icon}</Text> : icon}</View>
+        )}
       </View>
       {error && <Text style={styles.inputError}>{error}</Text>}
     </View>
@@ -327,7 +335,9 @@ export function ModalContainer({
               <View style={{ width: 44 }} />
             </View>
           )}
-          <View style={styles.modalFullScreenContent}>{children}</View>
+          <View style={styles.modalFullScreenContent}>
+            {typeof children === 'string' ? <Text>{children}</Text> : children}
+          </View>
         </View>
       ) : (
         <KeyboardAvoidingView 
@@ -443,7 +453,9 @@ export function Chip({ label, selected, onPress, icon, style }: ChipProps) {
       activeOpacity={0.7}
       disabled={Boolean(!onPress)}
     >
-      {icon && <View style={styles.chipIcon}>{icon}</View>}
+      {icon && (
+        <View style={styles.chipIcon}>{typeof icon === 'string' || typeof icon === 'number' ? <Text>{icon}</Text> : icon}</View>
+      )}
       <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
     </TouchableOpacity>
   );
@@ -837,3 +849,7 @@ export { default as TermsConsentModal } from './TermsConsentModal';
 export { default as BackButton } from './BackButton';
 export { PlaceAutocomplete, QuickPlacePicker } from './PlaceAutocomplete';
 export { default as CalendarPicker } from './CalendarPicker';
+export { default as ProfileProgressBar } from './ProfileProgressBar';
+export { default as FAB, SimpleFAB } from './FAB';
+export { default as ThemePicker } from './ThemePicker';
+export { default as KittenButton } from './KittenButton';

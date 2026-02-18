@@ -12,7 +12,7 @@ export { default as HomeScreen } from './home/HomeScreen';
 
 // Job Screens
 export { default as JobDetailScreen } from './job/JobDetailScreen';
-export { default as PostJobScreen } from './job/PostJobScreen';
+export { default as PostJobScreen } from './job/PostJobScreenNew';
 
 // Profile
 export { default as ProfileScreen } from './profile/ProfileScreen';
@@ -28,6 +28,7 @@ export { default as DocumentsScreen } from './documents/DocumentsScreen';
 export { default as ApplicantsScreen } from './applicants/ApplicantsScreen';
 export { default as ReviewsScreen } from './reviews/ReviewsScreen';
 export { default as HelpScreen } from './help/HelpScreen';
+export { default as ThemeSelectionScreen } from './settings/ThemeSelectionScreen';
 
 // Legal
 export { default as TermsScreen } from './legal/TermsScreen';

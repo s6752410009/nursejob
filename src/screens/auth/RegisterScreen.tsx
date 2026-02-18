@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Button, Input, ErrorModal, TermsConsentModal } from '../../components/common';
+import { KittenButton as Button, Input, ErrorModal, TermsConsentModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme';
 import { AuthStackParamList } from '../../types';
 import { sendOTP, isValidThaiPhone } from '../../services/otpService';
@@ -65,9 +65,15 @@ export default function RegisterScreen({ navigation }: Props) {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle continue button press - show terms modal first
-  const handleContinuePress = () => {
+  // Handle continue button press - send OTP directly (dev mode)
+  const handleContinuePress = async () => {
     if (!validateForm()) return;
+    
+    // In dev mode, skip terms modal and send OTP directly
+    if (__DEV__) {
+      await handleSendOTP();
+      return;
+    }
     
     // Show terms modal for user to accept
     setShowTermsModal(true);
@@ -85,21 +91,32 @@ export default function RegisterScreen({ navigation }: Props) {
       if (result.success) {
         // Show OTP code in dev mode
         if (__DEV__ && result.otp) {
-          Alert.alert(
-            '🔧 Dev Mode',
-            `OTP Code: ${result.otp}\n\n(ใน Production จะส่ง SMS จริง)`,
-            [
-              {
-                text: 'ตกลง',
-                onPress: () => {
-                  // Navigate to OTP verification
-                  navigation.navigate('OTPVerification', {
-                    phone: cleanedPhone,
-                  });
+          console.log(`📱 [DEV] OTP: ${result.otp}`);
+          
+          // On web, Alert.alert callbacks don't work - navigate directly
+          if (Platform.OS === 'web') {
+            // Use window.alert then navigate
+            window.alert(`🔧 Dev Mode\n\nOTP Code: ${result.otp}\n\n(ใน Production จะส่ง SMS จริง)`);
+            navigation.navigate('OTPVerification', {
+              phone: cleanedPhone,
+            });
+          } else {
+            // On mobile, use Alert with callback
+            Alert.alert(
+              '🔧 Dev Mode',
+              `OTP Code: ${result.otp}\n\n(ใน Production จะส่ง SMS จริง)`,
+              [
+                {
+                  text: 'ตกลง',
+                  onPress: () => {
+                    navigation.navigate('OTPVerification', {
+                      phone: cleanedPhone,
+                    });
+                  },
                 },
-              },
-            ]
-          );
+              ]
+            );
+          }
         } else {
           // Navigate to OTP verification
           navigation.navigate('OTPVerification', {
@@ -149,7 +166,7 @@ export default function RegisterScreen({ navigation }: Props) {
           {/* Illustration */}
           <View style={styles.illustrationContainer}>
             <View style={styles.illustration}>
-              <Ionicons name="phone-portrait-outline" size={64} color={colors.primary} />
+              <Ionicons name="phone-portrait-outline" size={64} color={COLORS.primary} />
             </View>
           </View>
 
@@ -157,7 +174,7 @@ export default function RegisterScreen({ navigation }: Props) {
           <View style={styles.form}>
             {/* Phone Info */}
             <View style={styles.infoBox}>
-              <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+              <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} />
               <Text style={styles.infoText}>
                 เราจะส่งรหัส OTP 6 หลักไปยังเบอร์โทรศัพท์ของคุณเพื่อยืนยันตัวตน
               </Text>
@@ -187,7 +204,7 @@ export default function RegisterScreen({ navigation }: Props) {
               fullWidth
               size="large"
               style={styles.continueButton}
-              icon={<Ionicons name="arrow-forward" size={20} color={colors.white} />}
+              icon={<Ionicons name="arrow-forward" size={20} color={COLORS.white} />}
               iconPosition="right"
             />
 

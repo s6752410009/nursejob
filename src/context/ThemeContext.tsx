@@ -5,6 +5,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PALETTES, ColorPalette } from '../theme/palettes';
 
 // ============================================
 // Types
@@ -82,12 +83,29 @@ export interface ThemeColors {
 interface ThemeContextType {
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
+  paletteId: string;
+  setPalette: (id: string) => void;
   isDark: boolean;
   colors: ThemeColors;
 }
 
 // ============================================
-// Light Theme Colors
+// Helper to apply palette to theme colors
+// ============================================
+const applyPalette = (baseColors: ThemeColors, palette: ColorPalette): ThemeColors => {
+  return {
+    ...baseColors,
+    primary: palette.primary,
+    primaryLight: palette.primaryLight,
+    primaryDark: palette.primaryDark,
+    primaryBackground: palette.primaryBackground,
+    secondary: palette.secondary,
+    accent: palette.accent,
+  };
+};
+
+// ============================================
+// Light Theme Colors (Base)
 // ============================================
 export const lightColors: ThemeColors = {
   primary: '#4A90D9',
@@ -244,6 +262,7 @@ function notifyThemeListeners() {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const THEME_STORAGE_KEY = '@theme_mode';
+const PALETTE_STORAGE_KEY = '@theme_palette';
 
 // ============================================
 // Provider
@@ -255,6 +274,7 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const systemColorScheme = useColorScheme();
   const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
+  const [paletteId, setPaletteIdState] = useState<string>('default-blue');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load saved theme on mount
@@ -267,6 +287,11 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       const savedTheme = await AsyncStorage.getItem(THEME_STORAGE_KEY);
       if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
         setThemeModeState(savedTheme as ThemeMode);
+      }
+      
+      const savedPalette = await AsyncStorage.getItem(PALETTE_STORAGE_KEY);
+      if (savedPalette && PALETTES.some(p => p.id === savedPalette)) {
+        setPaletteIdState(savedPalette);
       }
     } catch (error) {
       console.error('Error loading theme:', error);
@@ -284,12 +309,23 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     }
   };
 
+  const setPalette = async (id: string) => {
+    try {
+      await AsyncStorage.setItem(PALETTE_STORAGE_KEY, id);
+      setPaletteIdState(id);
+    } catch (error) {
+      console.error('Error saving palette:', error);
+    }
+  };
+
   // Determine if dark mode should be active
   const isDark = themeMode === 'dark' || 
     (themeMode === 'system' && systemColorScheme === 'dark');
 
-  // Get current colors
-  const colors = isDark ? darkColors : lightColors;
+  // Get current colors based on palette
+  const selectedPalette = PALETTES.find(p => p.id === paletteId) || PALETTES[0];
+  const baseColors = isDark ? darkColors : lightColors;
+  const colors = applyPalette(baseColors, selectedPalette);
   
   // Update global state
   useEffect(() => {
@@ -301,6 +337,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const value: ThemeContextType = {
     themeMode,
     setThemeMode,
+    paletteId,
+    setPalette,
     isDark,
     colors,
   };

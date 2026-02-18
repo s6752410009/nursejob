@@ -1,13 +1,9 @@
-// ============================================
-// NOTIFICATIONS SCREEN - Production Ready
-// ============================================
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  SectionList,
   TouchableOpacity,
   Alert,
   RefreshControl,
@@ -30,6 +26,9 @@ import {
 } from '../../services/notificationsService';
 import { formatRelativeTime } from '../../utils/helpers';
 
+// ============================================
+// Helper Functions
+// ============================================
 const getNotificationIcon = (type: NotificationType): string => {
   const icons: Record<NotificationType, string> = {
     new_job: 'briefcase',
@@ -47,32 +46,88 @@ const getNotificationIcon = (type: NotificationType): string => {
 };
 
 const getNotificationColor = (type: NotificationType): string => {
-  const colors: Record<NotificationType, string> = {
-    new_job: colors.primary,
-    application_sent: colors.info,
-    application_viewed: colors.secondary,
-    application_accepted: colors.success,
-    application_rejected: colors.error,
-    new_message: colors.primary,
-    new_applicant: colors.secondary,
-    job_expired: colors.warning,
-    profile_reminder: colors.info,
-    system: colors.textSecondary,
+  const colorMap: Record<NotificationType, string> = {
+    new_job: COLORS.primary,
+    application_sent: COLORS.info,
+    application_viewed: COLORS.secondary,
+    application_accepted: COLORS.success,
+    application_rejected: COLORS.error,
+    new_message: COLORS.primary,
+    new_applicant: COLORS.secondary,
+    job_expired: COLORS.warning,
+    profile_reminder: COLORS.info,
+    system: COLORS.textSecondary,
   };
-  return colors[type] || colors.primary;
+  return colorMap[type] || COLORS.primary;
+};
+
+// Group notifications by date
+const groupNotificationsByDate = (notifications: Notification[]) => {
+  const groups: { [key: string]: Notification[] } = {};
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  
+  notifications.forEach((notification) => {
+    const date = notification.createdAt instanceof Date 
+      ? notification.createdAt 
+      : (notification.createdAt as any)?.toDate?.() || new Date(notification.createdAt as any);
+    
+    let dateKey: string;
+    if (isSameDay(date, today)) {
+      dateKey = 'วันนี้';
+    } else if (isSameDay(date, yesterday)) {
+      dateKey = 'เมื่อวาน';
+    } else if (isThisWeek(date)) {
+      dateKey = 'สัปดาห์นี้';
+    } else {
+      dateKey = date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+    
+    if (!groups[dateKey]) {
+      groups[dateKey] = [];
+    }
+    groups[dateKey].push(notification);
+  });
+  
+  // Convert to section format
+  return Object.entries(groups).map(([title, data]) => ({
+    title,
+    data,
+  }));
+};
+
+const isSameDay = (d1: Date, d2: Date) => {
+  return d1.getDate() === d2.getDate() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getFullYear() === d2.getFullYear();
+};
+
+const isThisWeek = (date: Date) => {
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay());
+  return date >= weekStart;
 };
 
 export default function NotificationsScreen() {
+  // ============================================
+  // 1. ALL HOOKS MUST BE AT THE TOP - ALWAYS CALLED UNCONDITIONALLY
+  // ============================================
+  
+  // Context hooks
   const navigation = useNavigation();
   const { user, requireAuth } = useAuth();
   const { colors } = useTheme();
+  
+  // State hooks
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Callback hooks
   const loadNotifications = useCallback(async () => {
     if (!user?.uid) return;
-
     try {
       const data = await getUserNotifications(user.uid);
       setNotifications(data);
@@ -84,64 +139,41 @@ export default function NotificationsScreen() {
     }
   }, [user?.uid]);
 
-  // Real-time notifications subscription
-  useEffect(() => {
-    if (!user?.uid) {
-      setIsLoading(false);
-      return;
-    }
-
-    // Subscribe to real-time notification updates
-    const unsubscribe = subscribeToNotifications(user.uid, (newNotifications) => {
-      setNotifications(newNotifications);
-      setIsLoading(false);
-      setIsRefreshing(false);
-    });
-
-    return () => unsubscribe();
-  }, [user?.uid]);
-
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
     loadNotifications();
-  };
+  }, [loadNotifications]);
 
-  const handleNotificationPress = async (notification: Notification) => {
-    // Mark as read
+  const handleNotificationPress = useCallback(async (notification: Notification) => {
     if (!notification.isRead) {
       await markAsRead(notification.id);
       setNotifications(prev =>
         prev.map(n => (n.id === notification.id ? { ...n, isRead: true } : n))
       );
     }
-
-    // Navigate based on type
     const { type, data } = notification;
-    
     if (type === 'new_message' && data?.conversationId) {
       (navigation as any).navigate('ChatRoom', {
         conversationId: data.conversationId,
       });
     } else if ((type === 'new_job' || type === 'application_accepted' || type === 'application_rejected') && data?.jobId) {
-      // Would need to fetch job details first
       Alert.alert('งาน', `Job ID: ${data.jobId}`);
     } else if (type === 'new_applicant' && data?.applicationId) {
       (navigation as any).navigate('Applicants');
     }
-  };
+  }, [navigation]);
 
-  const handleMarkAllRead = async () => {
+  const handleMarkAllRead = useCallback(async () => {
     if (!user?.uid) return;
-
     try {
       await markAllAsRead(user.uid);
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     } catch (error) {
       Alert.alert('เกิดข้อผิดพลาด', 'ไม่สามารถอ่านทั้งหมดได้');
     }
-  };
+  }, [user?.uid]);
 
-  const handleDelete = (notification: Notification) => {
+  const handleDelete = useCallback((notification: Notification) => {
     Alert.alert(
       'ลบการแจ้งเตือน',
       'ต้องการลบการแจ้งเตือนนี้หรือไม่?',
@@ -161,37 +193,39 @@ export default function NotificationsScreen() {
         },
       ]
     );
-  };
+  }, []);
 
-  // Not logged in
-  if (!user) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-        <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>การแจ้งเตือน</Text>
-          <View style={{ width: 80 }} />
-        </View>
-        <EmptyState
-          icon="notifications-outline"
-          title="เข้าสู่ระบบเพื่อดูการแจ้งเตือน"
-          subtitle="รับการแจ้งเตือนงานใหม่และข้อความ"
-          actionLabel="เข้าสู่ระบบ"
-          onAction={() => (navigation as any).navigate('Auth')}
-        />
-      </SafeAreaView>
-    );
-  }
+  // Effect hooks
+  useEffect(() => {
+    if (!user?.uid) {
+      setIsLoading(false);
+      return;
+    }
+    const unsubscribe = subscribeToNotifications(user.uid, (newNotifications) => {
+      setNotifications(newNotifications);
+      setIsLoading(false);
+      setIsRefreshing(false);
+    });
+    return () => unsubscribe();
+  }, [user?.uid]);
 
-  if (isLoading) {
-    return <Loading message="กำลังโหลด..." />;
-  }
+  // Memo hooks - MUST be before any conditional returns
+  const groupedNotifications = useMemo(() => {
+    return groupNotificationsByDate(notifications);
+  }, [notifications]);
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = useMemo(() => {
+    return notifications.filter(n => !n.isRead).length;
+  }, [notifications]);
 
-  const renderNotification = ({ item }: { item: Notification }) => (
+  // Render function callbacks
+  const renderSectionHeader = useCallback(({ section }: { section: { title: string } }) => (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{section.title}</Text>
+    </View>
+  ), []);
+
+  const renderNotification = useCallback(({ item }: { item: Notification }) => (
     <TouchableOpacity
       style={[styles.notificationItem, !item.isRead && styles.unread]}
       onPress={() => handleNotificationPress(item)}
@@ -221,7 +255,42 @@ export default function NotificationsScreen() {
       </View>
       {!item.isRead && <View style={styles.unreadDot} />}
     </TouchableOpacity>
-  );
+  ), [handleNotificationPress, handleDelete]);
+
+  // ============================================
+  // 2. NOW CONDITIONAL RETURNS ARE SAFE
+  // ============================================
+
+  // Early return for unauthenticated users
+  if (!user) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { backgroundColor: colors.surface }]}> 
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>การแจ้งเตือน</Text>
+          <View style={{ width: 80 }} />
+        </View>
+        <EmptyState
+          icon="notifications-outline"
+          title="เข้าสู่ระบบเพื่อดูการแจ้งเตือน"
+          subtitle="รับการแจ้งเตือนงานใหม่และข้อความ"
+          actionLabel="เข้าสู่ระบบ"
+          onAction={() => (navigation as any).navigate('Auth')}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  // Early return for loading state
+  if (isLoading) {
+    return <Loading message="กำลังโหลด..." />;
+  }
+
+  // ============================================
+  // 3. MAIN RENDER
+  // ============================================
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -239,10 +308,12 @@ export default function NotificationsScreen() {
         )}
       </View>
 
-      <FlatList
-        data={notifications}
+      <SectionList
+        sections={groupedNotifications}
         keyExtractor={(item) => item.id}
         renderItem={renderNotification}
+        renderSectionHeader={renderSectionHeader}
+        stickySectionHeadersEnabled={true}
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl
@@ -262,6 +333,10 @@ export default function NotificationsScreen() {
     </SafeAreaView>
   );
 }
+
+// ============================================
+// STYLES
+// ============================================
 
 const styles = StyleSheet.create({
   container: {
@@ -298,6 +373,20 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingBottom: 100,
+  },
+  sectionHeader: {
+    backgroundColor: COLORS.background,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  sectionTitle: {
+    fontSize: FONT_SIZES.sm,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   notificationItem: {
     flexDirection: 'row',
@@ -347,4 +436,3 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
 });
-

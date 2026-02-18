@@ -245,7 +245,7 @@ export const initialAlertState: AlertState = {
 
 // Helper function to create alert configs
 export const createAlert = {
-  success: (title: string, message?: string, buttons?: AlertButton[]): Partial<AlertState> => ({
+  success: (title: string, message?: string, buttons?: AlertButton[]): AlertState => ({
     visible: true,
     type: 'success',
     title,
@@ -253,7 +253,7 @@ export const createAlert = {
     buttons: buttons || [{ text: 'ตกลง' }],
   }),
   
-  error: (title: string, message?: string, buttons?: AlertButton[]): Partial<AlertState> => ({
+  error: (title: string, message?: string, buttons?: AlertButton[]): AlertState => ({
     visible: true,
     type: 'error',
     title,
@@ -261,7 +261,7 @@ export const createAlert = {
     buttons: buttons || [{ text: 'ตกลง' }],
   }),
   
-  warning: (title: string, message?: string, buttons?: AlertButton[]): Partial<AlertState> => ({
+  warning: (title: string, message?: string, buttons?: AlertButton[]): AlertState => ({
     visible: true,
     type: 'warning',
     title,
@@ -269,7 +269,7 @@ export const createAlert = {
     buttons: buttons || [{ text: 'ตกลง' }],
   }),
   
-  info: (title: string, message?: string, buttons?: AlertButton[]): Partial<AlertState> => ({
+  info: (title: string, message?: string, buttons?: AlertButton[]): AlertState => ({
     visible: true,
     type: 'info',
     title,
@@ -277,7 +277,7 @@ export const createAlert = {
     buttons: buttons || [{ text: 'ตกลง' }],
   }),
   
-  confirm: (title: string, message: string, onConfirm: () => void, onCancel?: () => void): Partial<AlertState> => ({
+  confirm: (title: string, message: string, onConfirm: () => void, onCancel?: () => void): AlertState => ({
     visible: true,
     type: 'question',
     title,

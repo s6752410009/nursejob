@@ -15,14 +15,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { Button, Input, Card, Chip, ModalContainer, PlaceAutocomplete, QuickPlacePicker, CalendarPicker } from '../../components/common';
+import { KittenButton as Button, Input, Card, Chip, ModalContainer, PlaceAutocomplete, QuickPlacePicker, CalendarPicker } from '../../components/common';
 import CustomAlert, { AlertState, initialAlertState, createAlert } from '../../components/common/CustomAlert';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, DEPARTMENTS, PROVINCES, DISTRICTS_BY_PROVINCE } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { createJob, updateJob } from '../../services/jobService';
 import { canUserPostToday, incrementPostCount, getUserSubscription, getPostExpiryDate } from '../../services/subscriptionService';
-import { MainTabParamList, JobPost, SUBSCRIPTION_PLANS } from '../../types';
+import { MainTabParamList, JobPost, SUBSCRIPTION_PLANS, PRICING } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
 
 // ============================================
@@ -44,7 +44,8 @@ interface ShiftForm {
   department: string;
   description: string;
   shiftRate: string;
-  rateType: 'hour' | 'day' | 'shift';
+  // broadened to accept other possible rate types from JobPost
+  rateType: 'shift' | 'hour' | 'day' | 'month' | 'per_shift' | 'per_day' | 'per_month' | 'negotiable' | string;
   shiftDate: Date;
   startTime: Date;
   endTime: Date;
@@ -127,7 +128,7 @@ export default function PostJobScreen({ navigation, route }: Props) {
       if (!user?.uid) return;
       
       const subscription = await getUserSubscription(user.uid);
-      setUserPlan(subscription.plan);
+      setUserPlan(subscription?.plan ?? 'free');
       
       const postStatus = await canUserPostToday(user.uid);
       setPostsRemaining(postStatus.postsRemaining);
@@ -211,10 +212,11 @@ export default function PostJobScreen({ navigation, route }: Props) {
             เข้าสู่ระบบเพื่อประกาศหาคนแทน
           </Text>
           <Button
-            title="เข้าสู่ระบบ"
             onPress={() => (navigation as any).navigate('Auth')}
             style={{ marginTop: SPACING.lg }}
-          />
+          >
+            เข้าสู่ระบบ
+          </Button>
         </View>
       </SafeAreaView>
     );
@@ -254,6 +256,22 @@ export default function PostJobScreen({ navigation, route }: Props) {
     }
 
     // Check posting limit for free users (only for new posts)
+    // If user selected urgent on free plan, route to Payment mock
+    if (form.isUrgent && userPlan === 'free' && !isEditMode) {
+      const serializeForm = (f: any) => ({
+        ...f,
+        shiftDate: f.shiftDate ? (f.shiftDate instanceof Date ? f.shiftDate.toISOString() : f.shiftDate) : undefined,
+      });
+      (navigation as any).navigate('Payment', {
+        type: 'urgent_post',
+        amount: PRICING.urgentPost,
+        title: 'ประกาศด่วน',
+        description: 'ติดป้าย "ด่วน" แสดงเด่นกว่าประกาศปกติ',
+        formData: serializeForm(form),
+      });
+      return;
+    }
+
     if (!isEditMode) {
       const postStatus = await canUserPostToday(user.uid);
       if (!postStatus.canPost) {
@@ -266,7 +284,8 @@ export default function PostJobScreen({ navigation, route }: Props) {
     try {
       // Get subscription for expiry date
       const subscription = await getUserSubscription(user.uid);
-      const expiresAt = getPostExpiryDate(subscription.plan);
+      const planKey = (subscription?.plan as any) || 'free';
+      const expiresAt = getPostExpiryDate(planKey);
       
       // Format time string
       const shiftTime = `${formatTime(form.startTime)}-${formatTime(form.endTime)}`;
@@ -276,7 +295,7 @@ export default function PostJobScreen({ navigation, route }: Props) {
         department: form.department,
         description: form.description,
         shiftRate: parseInt(form.shiftRate),
-        rateType: form.rateType,
+        rateType: form.rateType as JobPost['rateType'],
         shiftDate: form.shiftDate,
         shiftTime,
         location: {
@@ -299,28 +318,52 @@ export default function PostJobScreen({ navigation, route }: Props) {
           ]),
         } as AlertState);
       } else {
-        // Create new job
-        await createJob({
+        // Create new job and navigate to its detail immediately
+        const jobId = await createJob({
           ...jobData,
           posterId: user.uid,
           posterName: user.displayName || 'ไม่ระบุชื่อ',
           posterPhoto: user.photoURL || '',
-          posterVerified: user.isVerified || false, // เพิ่ม verified status
-        });
+          posterVerified: Boolean(user.isVerified), // เพิ่ม verified status
+        } as Partial<JobPost>);
 
         // Increment post count for free users
         await incrementPostCount(user.uid);
-        
+
         // Update remaining posts display
         const postStatus = await canUserPostToday(user.uid);
         setPostsRemaining(postStatus.postsRemaining);
 
-        const expiryDays = SUBSCRIPTION_PLANS[userPlan].postExpiryDays;
-        setAlert({
-          ...createAlert.success('โพสต์สำเร็จ!', `ประกาศของคุณถูกโพสต์แล้ว\nจะแสดงผล ${expiryDays} วัน`, [
-            { text: 'ดูประกาศของฉัน', onPress: () => (navigation as any).navigate('MyPosts') }
-          ]),
-        } as AlertState);
+        // Build a best-effort JobPost to pass to JobDetail screen
+        const createdJob: JobPost = {
+          id: jobId,
+          title: jobData.title || '',
+          posterName: user.displayName || 'ไม่ระบุชื่อ',
+          posterId: user.uid,
+          posterPhoto: user.photoURL || '',
+          department: jobData.department || '',
+          shiftRate: jobData.shiftRate || 0,
+          rateType: jobData.rateType as JobPost['rateType'] || 'shift',
+          shiftDate: jobData.shiftDate || new Date(),
+          shiftTime: jobData.shiftTime || '',
+          location: jobData.location || {},
+          contactPhone: jobData.contactPhone || '',
+          contactLine: jobData.contactLine || '',
+          status: (jobData.status as any) || 'active',
+          description: jobData.description || '',
+          createdAt: new Date(),
+          expiresAt: jobData.expiresAt as any,
+          viewsCount: 0,
+          applicationCount: 0,
+        } as JobPost;
+
+        // Serialize created job dates before navigating
+        const serializedCreatedJob = {
+          ...createdJob,
+          shiftDate: createdJob.shiftDate ? (createdJob.shiftDate instanceof Date ? createdJob.shiftDate.toISOString() : createdJob.shiftDate) : undefined,
+          createdAt: createdJob.createdAt ? (createdJob.createdAt instanceof Date ? createdJob.createdAt.toISOString() : createdJob.createdAt) : undefined,
+        } as any;
+        (navigation as any).navigate('JobDetail', { job: serializedCreatedJob });
       }
     } catch (error: any) {
       setAlert({
@@ -666,15 +709,15 @@ export default function PostJobScreen({ navigation, route }: Props) {
       {/* Submit Button */}
       <View style={styles.bottomActions}>
         <Button
-          title={isLoading 
-            ? (isEditMode ? 'กำลังบันทึก...' : 'กำลังโพสต์...') 
-            : (isEditMode ? 'บันทึกการแก้ไข ✓' : (form.isUrgent ? 'โพสต์ด่วน ⚡ (฿49)' : 'โพสต์เลย 🚀'))
-          }
           onPress={handleSubmit}
-          loading={isLoading}
           disabled={isLoading}
           style={{ flex: 1 }}
-        />
+        >
+          {isLoading
+            ? (isEditMode ? 'กำลังบันทึก...' : 'กำลังโพสต์...')
+            : (isEditMode ? 'บันทึกการแก้ไข ✓' : (form.isUrgent ? 'โพสต์ด่วน ⚡ (฿49)' : 'โพสต์เลย 🚀'))
+          }
+        </Button>
       </View>
 
       {/* Province Modal */}

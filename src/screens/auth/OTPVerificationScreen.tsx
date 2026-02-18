@@ -11,12 +11,13 @@ import {
   TouchableOpacity,
   Alert,
   Keyboard,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { Button } from '../../components/common';
+import { KittenButton as Button } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme';
 import { sendMockOTP, verifyMockOTP, isValidThaiPhone } from '../../services/otpService';
 import { AuthStackParamList } from '../../types';
@@ -130,22 +131,31 @@ export default function OTPVerificationScreen({ navigation, route }: Props) {
       
       if (isValid) {
         // OTP verified! Proceed with registration
-        Alert.alert(
-          'ยืนยันสำเร็จ! ✅',
-          'เบอร์โทรศัพท์ของคุณได้รับการยืนยันแล้ว',
-          [
-            {
-              text: 'ดำเนินการต่อ',
-              onPress: () => {
-                // Navigate to complete registration with verified phone
-                navigation.replace('CompleteRegistration', {
-                  phone,
-                  phoneVerified: true,
-                });
+        if (Platform.OS === 'web') {
+          window.alert('ยืนยันสำเร็จ! ✅\n\nเบอร์โทรศัพท์ของคุณได้รับการยืนยันแล้ว');
+          navigation.replace('ChooseRole', {
+            phone,
+            phoneVerified: true,
+            registrationData,
+          });
+        } else {
+          Alert.alert(
+            'ยืนยันสำเร็จ! ✅',
+            'เบอร์โทรศัพท์ของคุณได้รับการยืนยันแล้ว',
+            [
+              {
+                text: 'ดำเนินการต่อ',
+                onPress: () => {
+                  navigation.replace('ChooseRole', {
+                    phone,
+                    phoneVerified: true,
+                    registrationData,
+                  });
+                },
               },
-            },
-          ]
-        );
+            ]
+          );
+        }
       } else {
         Alert.alert('รหัส OTP ไม่ถูกต้อง', 'กรุณาตรวจสอบและลองใหม่อีกครั้ง');
         setOtp(['', '', '', '', '', '']);

@@ -40,6 +40,8 @@ import {
   AdminJob,
   AdminConversation,
 } from '../../services/adminService';
+import { getUserSubscription, updateUserSubscription } from '../../services/subscriptionService';
+import { Subscription, SubscriptionPlan, SUBSCRIPTION_PLANS } from '../../types';
 import { formatRelativeTime } from '../../utils/helpers';
 
 // ============================================
@@ -115,6 +117,18 @@ export default function AdminDashboardScreen() {
     message: string;
     onConfirm: () => Promise<void>;
   } | null>(null);
+
+  // Helper to blur active element on web to avoid aria-hidden focus warnings
+  const safeBlur = () => {
+    if (typeof document !== 'undefined') {
+      try {
+        const active = document.activeElement as HTMLElement | null;
+        if (active && active !== document.body) active.blur();
+      } catch (e) {
+        // ignore
+      }
+    }
+  };
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   
@@ -126,6 +140,10 @@ export default function AdminDashboardScreen() {
   // Selected user profile
   const [selectedUserProfile, setSelectedUserProfile] = useState<SelectedUserProfile | null>(null);
   const [isLoadingUserProfile, setIsLoadingUserProfile] = useState(false);
+  const [selectedUserSubscription, setSelectedUserSubscription] = useState<Subscription | null>(null);
+  const [subLoading, setSubLoading] = useState(false);
+  const [subEditPosts, setSubEditPosts] = useState('0');
+  const [subSelectedPlan, setSubSelectedPlan] = useState<SubscriptionPlan>('free');
 
   // Load data
   const loadData = useCallback(async () => {
@@ -190,6 +208,7 @@ export default function AdminDashboardScreen() {
         ));
       },
     });
+    safeBlur();
     setShowConfirmModal(true);
   };
 
@@ -207,6 +226,7 @@ export default function AdminDashboardScreen() {
         ));
       },
     });
+    safeBlur();
     setShowConfirmModal(true);
   };
 
@@ -222,6 +242,7 @@ export default function AdminDashboardScreen() {
         setStats(prev => ({ ...prev, totalUsers: prev.totalUsers - 1 }));
       },
     });
+    safeBlur();
     setShowConfirmModal(true);
   };
 
@@ -238,6 +259,20 @@ export default function AdminDashboardScreen() {
         user: userItem,
         conversations: userConversations,
       });
+
+      // Load subscription info for this user
+      try {
+        setSubLoading(true);
+        const sub = await getUserSubscription(userItem.uid || userItem.id);
+        setSelectedUserSubscription(sub);
+        setSubSelectedPlan(sub.plan || 'free');
+        setSubEditPosts(String(sub.postsToday || 0));
+      } catch (err) {
+        console.error('Error loading subscription for user:', err);
+        setSelectedUserSubscription(null);
+      } finally {
+        setSubLoading(false);
+      }
     } catch (error) {
       setErrorMessage('ไม่สามารถโหลดข้อมูลได้');
       setShowErrorModal(true);
@@ -262,6 +297,7 @@ export default function AdminDashboardScreen() {
         ));
       },
     });
+    safeBlur();
     setShowConfirmModal(true);
   };
 
@@ -277,6 +313,7 @@ export default function AdminDashboardScreen() {
         setStats(prev => ({ ...prev, totalJobs: prev.totalJobs - 1 }));
       },
     });
+    safeBlur();
     setShowConfirmModal(true);
   };
 
@@ -307,6 +344,7 @@ export default function AdminDashboardScreen() {
         setStats(prev => ({ ...prev, totalConversations: prev.totalConversations - 1 }));
       },
     });
+    safeBlur();
     setShowConfirmModal(true);
   };
 
@@ -323,6 +361,65 @@ export default function AdminDashboardScreen() {
       setShowConfirmModal(false);
       setErrorMessage(error.message || 'เกิดข้อผิดพลาด');
       setShowErrorModal(true);
+    }
+  };
+
+  // Subscription management helpers (admin)
+  const handleSaveSubscription = async () => {
+    if (!selectedUserProfile) return;
+    const userId = selectedUserProfile.user.uid || selectedUserProfile.user.id;
+    setSubLoading(true);
+    try {
+      const partial: any = {
+        plan: subSelectedPlan,
+      };
+      // Only set postsToday when provided
+      const postsNum = parseInt(subEditPosts || '0');
+      partial.postsToday = isNaN(postsNum) ? 0 : postsNum;
+      // If free plan, set lastPostDate to today to align counters
+      if (subSelectedPlan === 'free') {
+        partial.lastPostDate = new Date().toISOString().split('T')[0];
+      } else {
+        // Do not send undefined to Firestore update (causes invalid-data error)
+        // Remove any lastPostDate field so updateDoc won't receive an undefined value
+        if ('lastPostDate' in partial) delete (partial as any).lastPostDate;
+      }
+
+      await updateUserSubscription(userId, partial);
+      // reload subscription
+      const sub = await getUserSubscription(userId);
+      setSelectedUserSubscription(sub);
+      setSuccessMessage('อัพเดทข้อมูลสมาชิกเรียบร้อย');
+      setShowSuccessModal(true);
+    } catch (err: any) {
+      console.error('Error updating subscription:', err);
+      setErrorMessage(err.message || 'ไม่สามารถอัพเดทข้อมูลสมาชิกได้');
+      setShowErrorModal(true);
+    } finally {
+      setSubLoading(false);
+    }
+  };
+
+  const handleResetPosts = async () => {
+    if (!selectedUserProfile) return;
+    const userId = selectedUserProfile.user.uid || selectedUserProfile.user.id;
+    setSubLoading(true);
+    try {
+      await updateUserSubscription(userId, {
+        postsToday: 0,
+        lastPostDate: new Date().toISOString().split('T')[0],
+      });
+      const sub = await getUserSubscription(userId);
+      setSelectedUserSubscription(sub);
+      setSubEditPosts(String(sub.postsToday || 0));
+      setSuccessMessage('รีเซ็ทจำนวนโพสต์เรียบร้อย');
+      setShowSuccessModal(true);
+    } catch (err: any) {
+      console.error('Error resetting posts:', err);
+      setErrorMessage(err.message || 'ไม่สามารถรีเซ็ทโพสต์ได้');
+      setShowErrorModal(true);
+    } finally {
+      setSubLoading(false);
     }
   };
 
@@ -705,6 +802,60 @@ export default function AdminDashboardScreen() {
           </View>
         </View>
         
+            {/* Subscription Controls */}
+        <View style={[styles.subscriptionBox, { padding: SPACING.md, marginTop: SPACING.md, borderRadius: 12, backgroundColor: COLORS.surface }]}>
+          <Text style={[styles.sectionTitle, { marginBottom: SPACING.sm }]}>ข้อมูลสมาชิก / แพ็กเกจ</Text>
+          {subLoading ? (
+            <ActivityIndicator />
+          ) : selectedUserSubscription ? (
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: SPACING.sm }}>
+                <Text style={{ color: COLORS.textSecondary }}>แพ็กเกจปัจจุบัน</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity onPress={() => setSubSelectedPlan('free')} style={[styles.planButton, subSelectedPlan === 'free' && styles.planButtonActive]}>
+                    <Text style={subSelectedPlan === 'free' ? styles.planButtonTextActive : styles.planButtonText}>ฟรี</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setSubSelectedPlan('premium')} style={[styles.planButton, subSelectedPlan === 'premium' && styles.planButtonActive]}>
+                    <Text style={subSelectedPlan === 'premium' ? styles.planButtonTextActive : styles.planButtonText}>Premium</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={{ marginBottom: SPACING.sm }}>
+                <Text style={{ color: COLORS.textSecondary }}>โพสต์วันนี้</Text>
+                <TextInput
+                  value={subEditPosts}
+                  onChangeText={setSubEditPosts}
+                  keyboardType="number-pad"
+                  style={[styles.input, { marginTop: 6, paddingVertical: 8, paddingHorizontal: 10 }]}
+                />
+              </View>
+
+              <Text style={{ color: COLORS.textSecondary, marginBottom: SPACING.sm }}>
+                ที่เหลือ: {(() => {
+                  const planKey = (selectedUserSubscription?.plan as keyof typeof SUBSCRIPTION_PLANS) || 'free';
+                  const planInfo = SUBSCRIPTION_PLANS[planKey] || SUBSCRIPTION_PLANS.free;
+                  const max = planInfo.maxPostsPerDay;
+                  if (max == null) return 'ไม่จำกัด';
+                  const used = Number(selectedUserSubscription?.postsToday || 0);
+                  return Math.max(0, (max || 0) - used) + ' โพสต์';
+                })()}
+              </Text>
+
+              <View style={{ flexDirection: 'row', marginTop: SPACING.sm }}>
+                <TouchableOpacity style={[styles.adminActionButton, { marginRight: SPACING.sm }]} onPress={handleSaveSubscription}>
+                  <Text style={styles.adminActionText}>บันทึก</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.adminActionButton, { backgroundColor: COLORS.warning }]} onPress={handleResetPosts}>
+                  <Text style={styles.adminActionText}>รีเซ็ทโพสต์</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <Text style={{ color: COLORS.textSecondary }}>ไม่มีข้อมูลสมาชิก</Text>
+          )}
+        </View>
+
         {/* User's Conversations */}
         <Text style={styles.sectionTitle}>แชทของ {profileUser.displayName} ({userChats.length})</Text>
         
@@ -1392,6 +1543,44 @@ const styles = StyleSheet.create({
   },
   profileBadgeText: {
     fontSize: FONT_SIZES.xs,
+    fontWeight: '600',
+  },
+  subscriptionBox: {
+    marginVertical: SPACING.sm,
+  },
+  planButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  planButtonActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  planButtonText: {
+    color: COLORS.textSecondary,
+  },
+  planButtonTextActive: {
+    color: '#fff',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.white,
+  },
+  adminActionButton: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 10,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+  },
+  adminActionText: {
+    color: '#fff',
     fontWeight: '600',
   },
 });

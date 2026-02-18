@@ -20,7 +20,7 @@ import Constants from 'expo-constants';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Button, Card } from '../../components/common';
+import { KittenButton as Button, Card } from '../../components/common';
 import {
   createFeedback,
   getUserFeedback,

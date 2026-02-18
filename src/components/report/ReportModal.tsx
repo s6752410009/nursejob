@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme';
-import { ModalContainer, Button } from '../common';
+import { ModalContainer, KittenButton as Button } from '../common';
 import {
   createReport,
   ReportType,

@@ -18,12 +18,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { Button, Avatar, Badge, Card, ModalContainer, BackButton, ConfirmModal, SuccessModal, ErrorModal } from '../../components/common';
+import { KittenButton as Button, Avatar, Badge, Card, ModalContainer, BackButton, ConfirmModal, SuccessModal, ErrorModal } from '../../components/common';
 import ReportModal from '../../components/report/ReportModal';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { contactForShift, deleteJob, updateJob, incrementViewCount, getShiftContacts, updateJobStatus } from '../../services/jobService';
+import { getUserSubscription } from '../../services/subscriptionService';
 import { getOrCreateConversation } from '../../services/chatService';
 import { JobPost, RootStackParamList } from '../../types';
 import { formatDate, formatRelativeTime, callPhone, openLine, openMapsDirections } from '../../utils/helpers';
@@ -97,6 +98,7 @@ export default function JobDetailScreen({ navigation, route }: Props) {
   const [showContactSuccessModal, setShowContactSuccessModal] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [jobStatus, setJobStatus] = useState(job.status);
+  const [posterPlan, setPosterPlan] = useState<'free' | 'premium'>('free');
 
   // Check if user is logged in
   const isLoggedIn = isAuthenticated && user;
@@ -110,6 +112,20 @@ export default function JobDetailScreen({ navigation, route }: Props) {
       incrementViewCount(job.id);
     }
   }, [job?.id, isOwner]);
+
+  // Load poster's subscription plan to show badge
+  useEffect(() => {
+    const loadPosterPlan = async () => {
+      if (!job?.posterId) return;
+      try {
+        const sub = await getUserSubscription(job.posterId);
+        setPosterPlan(sub?.plan ?? 'free');
+      } catch (err) {
+        console.error('Error loading poster subscription', err);
+      }
+    };
+    loadPosterPlan();
+  }, [job?.posterId]);
 
   // Load applicants count for owner
   useEffect(() => {
@@ -324,7 +340,12 @@ export default function JobDetailScreen({ navigation, route }: Props) {
 
   // Handle edit job (for owner only)
   const handleEdit = () => {
-    (navigation as any).navigate('PostJob', { editJob: job });
+    const serialized = {
+      ...job,
+      shiftDate: job.shiftDate ? (job.shiftDate instanceof Date ? job.shiftDate.toISOString() : job.shiftDate) : undefined,
+      shiftDateEnd: (job as any).shiftDateEnd ? ((job as any).shiftDateEnd instanceof Date ? (job as any).shiftDateEnd.toISOString() : (job as any).shiftDateEnd) : undefined,
+    } as any;
+    (navigation as any).navigate('Main', { screen: 'PostJob', params: { editJob: serialized } });
   };
 
   // Handle mark as filled
@@ -364,17 +385,35 @@ export default function JobDetailScreen({ navigation, route }: Props) {
           </View>
 
           {/* Poster Info */}
-          <View style={styles.posterSection}>
+          <TouchableOpacity 
+            style={styles.posterSection}
+            onPress={() => {
+              (navigation as any).navigate('UserProfile', {
+                userId: job.posterId,
+                userName: job.posterName,
+                userPhoto: job.posterPhoto,
+              });
+            }}
+            activeOpacity={0.7}
+          >
             <Avatar 
               uri={job.posterPhoto}
               name={job.posterName}
               size={60}
             />
             <View style={styles.posterInfo}>
-              <Text style={styles.posterName}>{job.posterName}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.posterName}>{job.posterName}</Text>
+                {posterPlan === 'premium' && (
+                  <View style={[styles.premiumBadge, { marginLeft: 8 }]}>
+                    <Text style={styles.premiumBadgeText}>Premium</Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.postedTime}>โพสต์ {formatRelativeTime(job.createdAt)}</Text>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
 
           {/* Title */}
           <Text style={styles.title}>{job.title}</Text>
@@ -1274,6 +1313,19 @@ const styles = StyleSheet.create({
   contactOptionSubtext: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: FONT_SIZES.sm,
+  },
+  premiumBadge: {
+    backgroundColor: COLORS.premium,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  premiumBadgeText: {
+    color: COLORS.black,
+    fontSize: FONT_SIZES.xs,
+    fontWeight: '700',
   },
 });
 

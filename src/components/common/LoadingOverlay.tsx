@@ -2,7 +2,7 @@
 // LOADING OVERLAY - Fullscreen Loading State
 // ============================================
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -32,6 +32,15 @@ export function LoadingOverlay({
 }: LoadingOverlayProps) {
   if (!visible) return null;
 
+  useEffect(() => {
+    if (visible && typeof document !== 'undefined') {
+      try {
+        const active = document.activeElement as HTMLElement | null;
+        if (active && active !== document.body) active.blur();
+      } catch (e) {}
+    }
+  }, [visible]);
+
   return (
     <Modal
       visible={visible}
@@ -39,7 +48,7 @@ export function LoadingOverlay({
       animationType="fade"
       statusBarTranslucent
     >
-      <View style={styles.overlay}>
+      <View style={styles.overlay} accessibilityViewIsModal={true}>
         <View style={styles.container}>
           <ActivityIndicator size="large" color={COLORS.primary} />
           {message && <Text style={styles.message}>{message}</Text>}

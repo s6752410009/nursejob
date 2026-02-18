@@ -1,3 +1,5 @@
+import { Timestamp } from 'firebase/firestore';
+
 // ============================================
 // TYPE DEFINITIONS - Production Ready
 // ============================================
@@ -9,7 +11,7 @@ export type SubscriptionPlan = 'free' | 'premium';
 
 export interface Subscription {
   plan: SubscriptionPlan;
-  expiresAt?: Date; // null = never expires (for premium)
+  expiresAt?: Date | Timestamp | null; // null = never expires (for premium)
   startedAt?: Date;
   // Limits for free plan
   postsToday?: number;
@@ -91,8 +93,8 @@ export interface UserProfile {
   };
   // Subscription
   subscription?: Subscription;
-  createdAt: Date;
-  updatedAt?: Date;
+  createdAt: Date | admin.firestore.Timestamp;
+  updatedAt?: Date | admin.firestore.Timestamp;
   lastActiveAt?: Date;
   fcmToken?: string; // For push notifications
 }
@@ -100,32 +102,71 @@ export interface UserProfile {
 // Job Types - บอร์ดหาคนแทน
 export interface JobPost {
   id: string;
+  
+  // Post type (Supabase)
+  postType?: 'shift' | 'job' | 'homecare';
+  
   title: string;
   posterName: string;
   posterId: string;
   posterPhoto?: string;
+  
+  // ประเภทบุคลากรที่ต้องการ
+  staffType?: 'RN' | 'PN' | 'NA' | 'CG' | 'SITTER' | 'OTHER' | string;
+  staffTypeOther?: string; // ถ้าเลือก OTHER
+  
   department: string;
   description?: string;
   requirements?: string[];
-  // ค่าตอบแทน (ไม่ใช่เงินเดือน)
+  
+  // ค่าตอบแทน
   shiftRate: number;
-  rateType: 'hour' | 'day' | 'shift';
+  salary?: number;
+  rateType: 'hour' | 'day' | 'shift' | 'month' | 'per_shift' | 'per_day' | 'per_month' | 'negotiable';
+  salaryType?: string;
+  paymentType?: 'NET' | 'DEDUCT_PERCENT' | 'NEGOTIABLE' | 'CASH' | 'TRANSFER' | 'DEDUCT';
+  deductPercent?: number; // เช่น 3, 5, 10
+  
   // วันเวลาที่ต้องการ
   shiftDate: Date;
+  shiftDateEnd?: Date; // สำหรับงานหลายวัน
   shiftTime: string; // เช่น "08:00-16:00", "16:00-00:00"
+  startTime?: string;
+  endTime?: string;
+  duration?: string; // ระยะเวลา เช่น "1week", "1month"
+  
+  // สถานที่
+  locationType?: 'HOSPITAL' | 'CLINIC' | 'HOME' | 'NURSING_HOME' | 'OTHER';
+  province?: string;
+  district?: string;
+  hospital?: string;
+  address?: string;
   location?: {
     province: string;
     district?: string;
-    hospital?: string;
-    address?: string;
+    hospital?: string; // ชื่อ รพ./คลินิก/สถานที่
+    address?: string; // ที่อยู่เต็ม (สำหรับ Home care)
+    landmark?: string; // จุดสังเกต
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
   };
+  
+  // ข้อมูลติดต่อ
+  contactName?: string;
   contactPhone?: string;
   contactLine?: string;
-  createdAt: Date;
-  updatedAt?: Date;
-  expiresAt?: Date;
-  status: 'active' | 'closed' | 'urgent';
+  
+  // Metadata
+  createdAt: Date | admin.firestore.Timestamp;
+  updatedAt?: Date | admin.firestore.Timestamp;
+  expiresAt?: Date | admin.firestore.Timestamp | null;
+  status: 'active' | 'closed' | 'urgent' | 'expired' | 'deleted';
+  isUrgent?: boolean;
   viewsCount?: number;
+  applicationCount?: number;
+  applicantsCount?: number;
   tags?: string[];
   posterVerified?: boolean; // ผู้โพสต์ได้รับการยืนยันตัวตนแล้ว
 }
@@ -230,13 +271,19 @@ export interface Review {
 export interface JobFilters {
   query?: string;
   province?: string;
+  region?: string; // ภาค
   district?: string;
   department?: string;
+  staffType?: 'RN' | 'PN' | 'NA' | 'CG' | 'SITTER' | 'OTHER' | string; // ประเภทบุคลากร
+  locationType?: 'HOSPITAL' | 'CLINIC' | 'HOME' | 'NURSING_HOME' | 'OTHER'; // ประเภทสถานที่
+  postType?: 'shift' | 'job' | 'homecare'; // ประเภทโพสต์
   urgentOnly?: boolean;
   verifiedOnly?: boolean; // กรองเฉพาะงานจากพยาบาลยืนยันแล้ว
+  homeCareOnly?: boolean; // งาน Home Care เท่านั้น
   sortBy?: 'latest' | 'night' | 'morning' | 'nearest' | 'highestPay';
   minRate?: number;
   maxRate?: number;
+  paymentType?: 'NET' | 'DEDUCT_PERCENT' | 'NEGOTIABLE';
 }
 
 // Navigation Types
@@ -256,6 +303,7 @@ export type RootStackParamList = {
   Favorites: undefined;
   MyPosts: undefined;
   Shop: undefined; // ร้านค้า / ซื้อบริการ
+  ThemeSelection: undefined; // เลือกโทนสี
   Documents: undefined;
   Applicants: undefined;
   Reviews: { hospitalId: string; hospitalName: string };
@@ -269,6 +317,13 @@ export type RootStackParamList = {
   AdminReports: undefined; // Admin Reports Screen - ดูรายงาน
   AdminFeedback: undefined; // Admin Feedback Screen - ดู feedback
   Feedback: undefined; // User Feedback Screen
+  Payment: {
+    type?: string;
+    amount?: number;
+    title?: string;
+    description?: string;
+    formData?: any;
+  };
 };
 
 export type AuthStackParamList = {
@@ -285,9 +340,12 @@ export type AuthStackParamList = {
       displayName?: string;
     };
   };
+  ChooseRole: { phone: string; registrationData?: any };
   CompleteRegistration: { 
     phone: string; 
     phoneVerified: boolean;
+    role?: 'user' | 'nurse' | 'hospital';
+    registrationData?: any;
   };
   Terms: undefined;
   Privacy: undefined;
@@ -349,3 +407,6 @@ export interface PaginatedResponse<T> {
   limit: number;
   hasMore: boolean;
 }
+
+// Export StaffType for external usage
+export type StaffType = 'RN' | 'PN' | 'NA' | 'CG' | 'SITTER' | 'OTHER';

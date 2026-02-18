@@ -15,13 +15,30 @@ import {
   Alert,
   Dimensions,
   Animated,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { JobCard } from '../../components/job/JobCard';
-import { Loading, EmptyState, ModalContainer, Chip, Button, Avatar } from '../../components/common';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS, PROVINCES, DEPARTMENTS, DISTRICTS_BY_PROVINCE } from '../../theme';
+import { Loading, EmptyState, ModalContainer, Chip, KittenButton as Button, Avatar, FAB } from '../../components/common';
+import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
+import {
+  ALL_PROVINCES,
+  POPULAR_PROVINCES,
+  PROVINCES_BY_REGION,
+  REGIONS,
+  getDistrictsForProvince,
+} from '../../constants/locations';
+import {
+  STAFF_TYPES,
+  LOCATION_TYPES,
+  ALL_DEPARTMENTS,
+  HOME_CARE_TYPES,
+  PAYMENT_TYPES,
+  getStaffTypeLabel,
+  getLocationTypeLabel,
+} from '../../constants/jobOptions';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -59,6 +76,8 @@ function UrgentJobsBanner({ urgentJobs, onPress }: UrgentBannerProps) {
   useEffect(() => {
     if (urgentJobs.length <= 1) return;
 
+    const supportsNativeDriver = Platform.OS !== 'web';
+
     const interval = setInterval(() => {
       setCurrentIndex((prev) => {
         const nextIndex = (prev + 1) % urgentJobs.length;
@@ -68,12 +87,12 @@ function UrgentJobsBanner({ urgentJobs, onPress }: UrgentBannerProps) {
           Animated.timing(fadeAnim, {
             toValue: 0.3,
             duration: 150,
-            useNativeDriver: true,
+            useNativeDriver: supportsNativeDriver,
           }),
           Animated.timing(fadeAnim, {
             toValue: 1,
             duration: 150,
-            useNativeDriver: true,
+            useNativeDriver: supportsNativeDriver,
           }),
         ]).start();
 
@@ -327,6 +346,10 @@ export default function HomeScreen({ navigation }: Props) {
     urgentOnly: false,
     verifiedOnly: false,
     sortBy: 'latest',
+    staffType: undefined,
+    locationType: undefined,
+    homeCareOnly: false,
+    paymentType: undefined,
   });
 
   // Get urgent jobs for banner (paid premium placement)
@@ -400,7 +423,7 @@ export default function HomeScreen({ navigation }: Props) {
           if (post.status === 'closed') return false;
           if (!post.expiresAt) return false;
           
-          const expiryDate = new Date(post.expiresAt);
+          const expiryDate = (post.expiresAt as any)?.toDate?.() || post.expiresAt;
           const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           return daysLeft <= 1 && daysLeft > 0; // Only show when 1 day or less remaining
         });
@@ -449,6 +472,26 @@ export default function HomeScreen({ navigation }: Props) {
       }
       if (filters.maxRate && filters.maxRate > 0) {
         filteredJobs = filteredJobs.filter(job => job.shiftRate <= filters.maxRate!);
+      }
+      
+      // NEW: Filter by staff type
+      if (filters.staffType) {
+        filteredJobs = filteredJobs.filter(job => job.staffType === filters.staffType);
+      }
+      
+      // NEW: Filter by location type
+      if (filters.locationType) {
+        filteredJobs = filteredJobs.filter(job => job.locationType === filters.locationType);
+      }
+      
+      // NEW: Filter by payment type
+      if (filters.paymentType) {
+        filteredJobs = filteredJobs.filter(job => job.paymentType === filters.paymentType);
+      }
+      
+      // NEW: Filter home care only
+      if (filters.homeCareOnly) {
+        filteredJobs = filteredJobs.filter(job => job.locationType === 'HOME');
       }
       
       // Filter by shift time (morning/night) - only if explicitly selected
@@ -506,7 +549,12 @@ export default function HomeScreen({ navigation }: Props) {
 
   // Handle job press
   const handleJobPress = (job: JobPost) => {
-    (navigation as any).navigate('JobDetail', { job });
+    const serializedJob = {
+      ...job,
+      shiftDate: job.shiftDate ? (job.shiftDate instanceof Date ? job.shiftDate.toISOString() : job.shiftDate) : undefined,
+      shiftDateEnd: (job as any).shiftDateEnd ? ((job as any).shiftDateEnd instanceof Date ? (job as any).shiftDateEnd.toISOString() : (job as any).shiftDateEnd) : undefined,
+    } as any;
+    (navigation as any).navigate('JobDetail', { job: serializedJob });
   };
 
   // Handle save job (toggle favorite)
@@ -544,6 +592,10 @@ export default function HomeScreen({ navigation }: Props) {
       sortBy: 'latest',
       minRate: undefined,
       maxRate: undefined,
+      staffType: undefined,
+      locationType: undefined,
+      homeCareOnly: false,
+      paymentType: undefined,
     });
   };
 
@@ -556,6 +608,10 @@ export default function HomeScreen({ navigation }: Props) {
     if (filters.urgentOnly) count++;
     if (filters.verifiedOnly) count++;
     if (filters.minRate || filters.maxRate) count++;
+    if (filters.staffType) count++;
+    if (filters.locationType) count++;
+    if (filters.homeCareOnly) count++;
+    if (filters.paymentType) count++;
     return count;
   }, [filters]);
 
@@ -588,8 +644,8 @@ export default function HomeScreen({ navigation }: Props) {
       >
         <Chip
           label="ทั้งหมด"
-          selected={!filters.urgentOnly && filters.sortBy === 'latest'}
-          onPress={() => setFilters({ ...filters, urgentOnly: false, sortBy: 'latest' })}
+          selected={!filters.urgentOnly && !filters.staffType && !filters.locationType && filters.sortBy === 'latest'}
+          onPress={() => setFilters({ ...filters, urgentOnly: false, staffType: undefined, locationType: undefined, sortBy: 'latest' })}
         />
         <Chip
           label="🔥 ด่วน"
@@ -597,9 +653,24 @@ export default function HomeScreen({ navigation }: Props) {
           onPress={() => setFilters({ ...filters, urgentOnly: !filters.urgentOnly })}
         />
         <Chip
-          label="✓ พยาบาลยืนยัน"
+          label="✓ ยืนยันตัวตน"
           selected={filters.verifiedOnly}
           onPress={() => setFilters({ ...filters, verifiedOnly: !filters.verifiedOnly })}
+        />
+        <Chip
+          label="🏠 ดูแลที่บ้าน"
+          selected={filters.locationType === 'HOME'}
+          onPress={() => setFilters({ ...filters, locationType: filters.locationType === 'HOME' ? undefined : 'HOME' })}
+        />
+        <Chip
+          label="🏥 รพ."
+          selected={filters.locationType === 'HOSPITAL'}
+          onPress={() => setFilters({ ...filters, locationType: filters.locationType === 'HOSPITAL' ? undefined : 'HOSPITAL' })}
+        />
+        <Chip
+          label="💰 NET"
+          selected={filters.paymentType === 'NET'}
+          onPress={() => setFilters({ ...filters, paymentType: filters.paymentType === 'NET' ? undefined : 'NET' })}
         />
         <Chip
           label="🌙 เวรดึก"
@@ -607,12 +678,7 @@ export default function HomeScreen({ navigation }: Props) {
           onPress={() => setFilters({ ...filters, sortBy: filters.sortBy === 'night' ? 'latest' : 'night' })}
         />
         <Chip
-          label="☀️ เวรเช้า"
-          selected={filters.sortBy === 'morning'}
-          onPress={() => setFilters({ ...filters, sortBy: filters.sortBy === 'morning' ? 'latest' : 'morning' })}
-        />
-        <Chip
-          label="💰 ค่าตอบแทนสูง"
+          label="💵 ค่าสูง"
           selected={filters.sortBy === 'highestPay'}
           onPress={() => setFilters({ ...filters, sortBy: filters.sortBy === 'highestPay' ? 'latest' : 'highestPay' })}
         />
@@ -760,7 +826,7 @@ export default function HomeScreen({ navigation }: Props) {
           
           {expiringPosts.slice(0, 3).map((post) => {
             const now = new Date();
-            const expiryDate = new Date(post.expiresAt as Date);
+            const expiryDate = (post.expiresAt as any)?.toDate?.() || post.expiresAt;
             const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             
             return (
@@ -795,22 +861,45 @@ export default function HomeScreen({ navigation }: Props) {
           
           <View style={{ flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.md }}>
             <Button
-              title="ปิด"
-              variant="outline"
-              onPress={() => setShowExpiryPopup(false)}
-              style={{ flex: 1 }}
-            />
-            <Button
-              title="จัดการประกาศ"
-              onPress={() => {
-                setShowExpiryPopup(false);
-                (navigation as any).navigate('MyPosts');
-              }}
-              style={{ flex: 1 }}
-            />
+                variant="outline"
+                onPress={() => setShowExpiryPopup(false)}
+                style={{ flex: 1 }}
+              >ปิด</Button>
+              <Button
+                onPress={() => {
+                  setShowExpiryPopup(false);
+                  (navigation as any).navigate('MyPosts');
+                }}
+                style={{ flex: 1 }}
+              >จัดการประกาศ</Button>
           </View>
         </View>
       </ModalContainer>
+
+      {/* FAB - Quick Actions */}
+      <FAB
+        mainIcon="add"
+        actions={[
+          {
+            icon: 'create-outline',
+            label: 'โพสต์หาคนแทน',
+            onPress: () => (navigation as any).navigate('Main', { screen: 'PostJob' }),
+            color: COLORS.primary,
+          },
+          {
+            icon: 'heart-outline',
+            label: 'รายการโปรด',
+            onPress: () => (navigation as any).navigate('Favorites'),
+            color: '#EC4899',
+          },
+          {
+            icon: 'chatbubbles-outline',
+            label: 'แชท',
+            onPress: () => (navigation as any).navigate('Chat'),
+            color: '#06B6D4',
+          },
+        ]}
+      />
     </SafeAreaView>
   );
 }
@@ -829,6 +918,16 @@ interface FilterModalProps {
 
 function FilterModal({ visible, onClose, filters, setFilters, onApply, onClear }: FilterModalProps) {
   const insets = useSafeAreaInsets();
+  const [provinceSearch, setProvinceSearch] = useState('');
+  const [showAllProvinces, setShowAllProvinces] = useState(false);
+  
+  // Filter provinces by search
+  const filteredProvinces = provinceSearch
+    ? ALL_PROVINCES.filter(p => p.includes(provinceSearch))
+    : (showAllProvinces ? ALL_PROVINCES : POPULAR_PROVINCES);
+  
+  // Get departments based on location type
+  const departments = filters.locationType === 'HOME' ? HOME_CARE_TYPES : ALL_DEPARTMENTS;
   
   return (
     <ModalContainer
@@ -838,28 +937,99 @@ function FilterModal({ visible, onClose, filters, setFilters, onApply, onClear }
       fullScreen={true}
     >
       <ScrollView style={styles.filterContent} showsVerticalScrollIndicator={false}>
-        {/* Province */}
-        <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>จังหวัด</Text>
+        {/* Staff Type */}
+        <View style={[styles.filterSection, styles.filterCard]}>
+          <Text style={styles.filterLabel}>ประเภทบุคลากร</Text>
           <View style={styles.filterOptions}>
             <Chip
               label="ทั้งหมด"
-              selected={!filters.province}
-              onPress={() => setFilters({ ...filters, province: '', district: '' })}
+              selected={!filters.staffType}
+              onPress={() => setFilters({ ...filters, staffType: undefined })}
+              style={styles.optionChip}
             />
-            {PROVINCES.map((province) => (
+            {STAFF_TYPES.map((type) => (
               <Chip
-                key={province}
-                label={province}
-                selected={filters.province === province}
-                onPress={() => setFilters({ ...filters, province, district: '' })}
+                key={type.code}
+                label={type.shortName}
+                selected={filters.staffType === type.code}
+                onPress={() => setFilters({ ...filters, staffType: type.code })}
+                style={styles.optionChip}
               />
             ))}
           </View>
         </View>
 
-        {/* District - show for all provinces */}
-        {filters.province && DISTRICTS_BY_PROVINCE[filters.province] && (
+        {/* Location Type */}
+        <View style={[styles.filterSection, styles.filterCard]}>
+          <Text style={styles.filterLabel}>ประเภทสถานที่</Text>
+          <View style={styles.filterOptions}>
+            <Chip
+              label="ทั้งหมด"
+              selected={!filters.locationType}
+              onPress={() => setFilters({ ...filters, locationType: undefined, department: '' })}
+              style={styles.optionChip}
+            />
+            {LOCATION_TYPES.map((type) => (
+              <Chip
+                key={type.code}
+                label={`${type.icon} ${type.nameTH}`}
+                selected={filters.locationType === type.code}
+                onPress={() => setFilters({ ...filters, locationType: type.code as any, department: '' })}
+                style={styles.optionChip}
+              />
+            ))}
+          </View>
+        </View>
+
+        {/* Province */}
+        <View style={[styles.filterSection, styles.filterCard]}>
+          <Text style={styles.filterLabel}>จังหวัด</Text>
+          <TextInput
+            style={styles.provinceSearchInput}
+            placeholder="ค้นหาจังหวัด..."
+            placeholderTextColor={COLORS.textMuted}
+            value={provinceSearch}
+            onChangeText={setProvinceSearch}
+          />
+          <View style={styles.filterOptions}>
+            <Chip
+              label="ทั้งหมด"
+              selected={!filters.province}
+              onPress={() => setFilters({ ...filters, province: '', district: '' })}
+              style={styles.optionChip}
+            />
+            {filteredProvinces.map((province) => (
+              <Chip
+                key={province}
+                label={province}
+                selected={filters.province === province}
+                onPress={() => setFilters({ ...filters, province, district: '' })}
+                style={styles.optionChip}
+              />
+            ))}
+          </View>
+          {!provinceSearch && !showAllProvinces && (
+            <TouchableOpacity 
+              style={styles.showMoreButton}
+              onPress={() => setShowAllProvinces(true)}
+            >
+              <Text style={styles.showMoreText}>ดูทั้งหมด 77 จังหวัด</Text>
+              <Ionicons name="chevron-down" size={16} color={COLORS.primary} />
+            </TouchableOpacity>
+          )}
+          {showAllProvinces && (
+            <TouchableOpacity 
+              style={styles.showMoreButton}
+              onPress={() => setShowAllProvinces(false)}
+            >
+              <Text style={styles.showMoreText}>แสดงน้อยลง</Text>
+              <Ionicons name="chevron-up" size={16} color={COLORS.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* District - show for selected provinces */}
+        {filters.province && getDistrictsForProvince(filters.province).length > 0 && (
           <View style={styles.filterSection}>
             <Text style={styles.filterLabel}>
               {filters.province === 'กรุงเทพมหานคร' ? 'เขต' : 'อำเภอ'}
@@ -870,13 +1040,15 @@ function FilterModal({ visible, onClose, filters, setFilters, onApply, onClear }
                   label={filters.province === 'กรุงเทพมหานคร' ? 'ทุกเขต' : 'ทุกอำเภอ'}
                   selected={!filters.district}
                   onPress={() => setFilters({ ...filters, district: '' })}
+                  style={styles.optionChip}
                 />
-                {DISTRICTS_BY_PROVINCE[filters.province].map((district) => (
+                {getDistrictsForProvince(filters.province).map((district) => (
                   <Chip
                     key={district}
                     label={district}
                     selected={filters.district === district}
                     onPress={() => setFilters({ ...filters, district })}
+                    style={styles.optionChip}
                   />
                 ))}
               </View>
@@ -884,88 +1056,125 @@ function FilterModal({ visible, onClose, filters, setFilters, onApply, onClear }
           </View>
         )}
 
-        {/* Department */}
-        <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>แผนก</Text>
+        {/* Department / Care Type */}
+        <View style={[styles.filterSection, styles.filterCard]}>
+          <Text style={styles.filterLabel}>
+            {filters.locationType === 'HOME' ? 'ประเภทการดูแล' : 'แผนก'}
+          </Text>
+          <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
+            <View style={styles.filterOptions}>
+              <Chip
+                label="ทั้งหมด"
+                selected={!filters.department}
+                onPress={() => setFilters({ ...filters, department: '' })}
+                style={styles.optionChip}
+              />
+              {departments.map((dept) => (
+                <Chip
+                  key={dept}
+                  label={dept}
+                  selected={filters.department === dept}
+                  onPress={() => setFilters({ ...filters, department: dept })}
+                  style={styles.optionChip}
+                />
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* Payment Type */}
+        <View style={[styles.filterSection, styles.filterCard]}>
+          <Text style={styles.filterLabel}>รูปแบบค่าตอบแทน</Text>
           <View style={styles.filterOptions}>
             <Chip
               label="ทั้งหมด"
-              selected={!filters.department}
-              onPress={() => setFilters({ ...filters, department: '' })}
+              selected={!filters.paymentType}
+              onPress={() => setFilters({ ...filters, paymentType: undefined })}
+              style={styles.optionChip}
             />
-            {DEPARTMENTS.map((dept) => (
+            {PAYMENT_TYPES.map((pt) => (
               <Chip
-                key={dept}
-                label={dept}
-                selected={filters.department === dept}
-                onPress={() => setFilters({ ...filters, department: dept })}
+                key={pt.code}
+                label={pt.nameTH}
+                selected={filters.paymentType === pt.code}
+                onPress={() => setFilters({ ...filters, paymentType: pt.code as any })}
+                style={styles.optionChip}
               />
             ))}
           </View>
         </View>
 
         {/* Urgent Only & Verified Only */}
-        <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>ประเภท</Text>
+        <View style={[styles.filterSection, styles.filterCard]}>
+          <Text style={styles.filterLabel}>ตัวเลือกพิเศษ</Text>
           <View style={styles.filterOptions}>
             <Chip
-              label="ด่วนเท่านั้น"
+              label="🔥 ด่วนเท่านั้น"
               selected={filters.urgentOnly || false}
               onPress={() => setFilters({ ...filters, urgentOnly: !filters.urgentOnly })}
+              style={styles.optionChip}
             />
             <Chip
-              label="✓ พยาบาลยืนยัน"
+              label="✓ ยืนยันตัวตน"
               selected={filters.verifiedOnly || false}
               onPress={() => setFilters({ ...filters, verifiedOnly: !filters.verifiedOnly })}
+              style={styles.optionChip}
             />
           </View>
         </View>
 
         {/* Rate Range */}
-        <View style={styles.filterSection}>
+        <View style={[styles.filterSection, styles.filterCard]}>
           <Text style={styles.filterLabel}>ช่วงค่าตอบแทน</Text>
           <View style={styles.filterOptions}>
             <Chip
               label="ทั้งหมด"
               selected={!filters.minRate && !filters.maxRate}
               onPress={() => setFilters({ ...filters, minRate: undefined, maxRate: undefined })}
+              style={styles.optionChip}
             />
             <Chip
               label="< 1,500"
               selected={filters.maxRate === 1500 && !filters.minRate}
               onPress={() => setFilters({ ...filters, minRate: undefined, maxRate: 1500 })}
+              style={styles.optionChip}
             />
             <Chip
               label="1,500 - 2,500"
               selected={filters.minRate === 1500 && filters.maxRate === 2500}
               onPress={() => setFilters({ ...filters, minRate: 1500, maxRate: 2500 })}
+              style={styles.optionChip}
             />
             <Chip
               label="2,500 - 3,500"
               selected={filters.minRate === 2500 && filters.maxRate === 3500}
               onPress={() => setFilters({ ...filters, minRate: 2500, maxRate: 3500 })}
+              style={styles.optionChip}
             />
             <Chip
               label="> 3,500"
               selected={filters.minRate === 3500 && !filters.maxRate}
               onPress={() => setFilters({ ...filters, minRate: 3500, maxRate: undefined })}
+              style={styles.optionChip}
             />
           </View>
         </View>
 
         {/* Sort By */}
-        <View style={styles.filterSection}>
+        <View style={[styles.filterSection, styles.filterCard]}>
           <Text style={styles.filterLabel}>เรียงตาม</Text>
           <View style={styles.filterOptions}>
             <Chip
               label="ล่าสุด"
               selected={filters.sortBy === 'latest' || !filters.sortBy}
               onPress={() => setFilters({ ...filters, sortBy: 'latest' })}
+              style={styles.optionChip}
             />
             <Chip
               label="ค่าตอบแทนสูงสุด"
               selected={filters.sortBy === 'highestPay'}
               onPress={() => setFilters({ ...filters, sortBy: 'highestPay' })}
+              style={styles.optionChip}
             />
           </View>
         </View>
@@ -974,16 +1183,14 @@ function FilterModal({ visible, onClose, filters, setFilters, onApply, onClear }
       {/* Actions */}
       <View style={[styles.filterActions, { paddingBottom: Math.max(insets.bottom, 16) + SPACING.md }]}>
         <Button
-          title="ล้างตัวกรอง"
-          onPress={onClear}
-          variant="outline"
-          style={{ flex: 1, marginRight: SPACING.sm }}
-        />
-        <Button
-          title="ค้นหา"
-          onPress={onApply}
-          style={{ flex: 1 }}
-        />
+            onPress={onClear}
+            variant="outline"
+            style={{ flex: 1, marginRight: SPACING.sm }}
+          >ล้างตัวกรอง</Button>
+          <Button
+            onPress={onApply}
+            style={{ flex: 1 }}
+          >ค้นหา</Button>
       </View>
     </ModalContainer>
   );
@@ -1168,6 +1375,41 @@ const styles = StyleSheet.create({
   filterOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+  },
+  filterCard: {
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: SPACING.md,
+    ...SHADOWS.small,
+  },
+  optionChip: {
+    marginRight: SPACING.sm,
+    marginBottom: SPACING.sm,
+  },
+  provinceSearchInput: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    marginBottom: SPACING.sm,
+    fontSize: FONT_SIZES.md,
+    color: COLORS.text,
+  },
+  showMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.sm,
+    marginTop: SPACING.xs,
+  },
+  showMoreText: {
+    fontSize: FONT_SIZES.sm,
+    color: COLORS.primary,
+    marginRight: 4,
   },
   filterActions: {
     flexDirection: 'row',

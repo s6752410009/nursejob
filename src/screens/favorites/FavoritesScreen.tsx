@@ -90,7 +90,13 @@ export default function FavoritesScreen() {
 
   const handleJobPress = (favorite: Favorite) => {
     if (favorite.job) {
-      (navigation as any).navigate('JobDetail', { job: favorite.job });
+      const job = favorite.job;
+      const serializedJob = {
+        ...job,
+        shiftDate: job.shiftDate ? (job.shiftDate instanceof Date ? job.shiftDate.toISOString() : job.shiftDate) : undefined,
+        shiftDateEnd: (job as any).shiftDateEnd ? ((job as any).shiftDateEnd instanceof Date ? (job as any).shiftDateEnd.toISOString() : (job as any).shiftDateEnd) : undefined,
+      } as any;
+      (navigation as any).navigate('JobDetail', { job: serializedJob });
     }
   };
 

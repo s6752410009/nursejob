@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
-import { Avatar, Button, Card, ModalContainer } from '../../components/common';
+import { Avatar, KittenButton as Button, Card, ModalContainer } from '../../components/common';
 import {
   getAllReports,
   getPendingReports,

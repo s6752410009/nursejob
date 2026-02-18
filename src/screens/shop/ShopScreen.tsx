@@ -18,7 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS, SHADOWS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Card, Button, ModalContainer } from '../../components/common';
+import { Card, KittenButton as Button, ModalContainer } from '../../components/common';
 import CustomAlert, { AlertState, initialAlertState, createAlert } from '../../components/common/CustomAlert';
 import { getUserSubscription, getSubscriptionStatusDisplay, canUseFreeUrgent } from '../../services/subscriptionService';
 import { PRICING, SUBSCRIPTION_PLANS, Subscription } from '../../types';

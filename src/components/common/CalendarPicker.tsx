@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: FONT_SIZES.sm,
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: COLORS.text,
     marginBottom: SPACING.xs,
   },
   inputButton: {
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   inputText: {
     flex: 1,
     fontSize: FONT_SIZES.md,
-    color: COLORS.textPrimary,
+    color: COLORS.text,
   },
   errorText: {
     fontSize: FONT_SIZES.xs,
@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
   monthTitle: {
     fontSize: FONT_SIZES.lg,
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: COLORS.text,
   },
   dayHeaders: {
     flexDirection: 'row',
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
   },
   dayText: {
     fontSize: FONT_SIZES.md,
-    color: COLORS.textPrimary,
+    color: COLORS.text,
   },
   dayTextSelected: {
     color: '#FFF',

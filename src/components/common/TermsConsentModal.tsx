@@ -2,7 +2,7 @@
 // TERMS CONSENT MODAL - Must scroll to accept
 // ============================================
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,15 @@ export default function TermsConsentModal({
 }: TermsConsentModalProps) {
   const [hasScrolledToEnd, setHasScrolledToEnd] = useState(false);
   const [currentTab, setCurrentTab] = useState<'terms' | 'privacy'>('terms');
+
+  useEffect(() => {
+    if (visible && typeof document !== 'undefined') {
+      try {
+        const active = document.activeElement as HTMLElement | null;
+        if (active && active !== document.body) active.blur();
+      } catch (e) {}
+    }
+  }, [visible]);
 
   // Check if scrolled to bottom
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -133,7 +142,7 @@ export default function TermsConsentModal({
       animationType="fade"
       onRequestClose={onDecline}
     >
-      <View style={styles.overlay}>
+      <View style={styles.overlay} accessibilityViewIsModal={true}>
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>

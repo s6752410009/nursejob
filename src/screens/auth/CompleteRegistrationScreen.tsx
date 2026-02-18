@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { Button, Input, SuccessModal, ErrorModal } from '../../components/common';
+import { KittenButton as Button, Input, SuccessModal, ErrorModal } from '../../components/common';
 import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 import { AuthStackParamList } from '../../types';
@@ -38,7 +38,7 @@ interface Props {
 // Component
 // ============================================
 export default function CompleteRegistrationScreen({ navigation, route }: Props) {
-  const { phone, phoneVerified } = route.params;
+  const { phone, phoneVerified, role } = route.params;
   
   // Form State
   const [displayName, setDisplayName] = useState('');
@@ -51,8 +51,8 @@ export default function CompleteRegistrationScreen({ navigation, route }: Props)
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Auth context
-  const { register, isLoading, clearError } = useAuth();
+// Auth context
+const { register, isLoading, clearError, user } = useAuth();
 
   // Validate form
   const validateForm = (): boolean => {
@@ -96,13 +96,22 @@ export default function CompleteRegistrationScreen({ navigation, route }: Props)
         email.trim(),
         password,
         displayName.trim(),
-        'user',
+        role || 'user', // ใช้ role ที่เลือก หรือ 'user' ถ้าไม่ได้เลือก
         undefined, // username
         phone // verified phone
       );
       
+      // ถ้า register สำเร็จ ให้แสดง success modal
       setShowSuccessModal(true);
     } catch (err: any) {
+      // เคสที่ Firebase สร้างบัญชีสำเร็จ แต่ขั้นตอนหลังจากนั้น error
+      // (เช่น เก็บข้อมูลลง AsyncStorage หรือ network บางส่วน) ทำให้ register() โยน error
+      // ถ้า context มี user แล้ว ให้ถือว่าสมัครสำเร็จ แล้วพาไปหน้า Login
+      if (user) {
+        setShowSuccessModal(true);
+        return;
+      }
+
       let message = err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
       if (!message.includes('อีเมล') && !message.includes('รหัสผ่าน') && !message.includes('บัญชี')) {
         message = getErrorMessage(err);
